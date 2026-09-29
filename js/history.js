@@ -1,0 +1,1 @@
+import {storage,keys} from './utils.js';export function addRecent(song){const items=storage.get(keys.recent).filter(item=>item.id!==song.id);storage.set(keys.recent,[{...song,playedAt:Date.now()},...items].slice(0,50))}export function recent(){return storage.get(keys.recent)}

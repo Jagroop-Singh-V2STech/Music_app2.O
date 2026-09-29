@@ -1,0 +1,1 @@
+import {storage,keys} from './utils.js';export const queue={all(){return storage.get(keys.queue)},add(song){const items=this.all();if(!items.some(item=>item.id===song.id)){storage.set(keys.queue,[...items,song]);return true}return false},remove(id){storage.set(keys.queue,this.all().filter(item=>item.id!==id))},clear(){storage.set(keys.queue,[])}};

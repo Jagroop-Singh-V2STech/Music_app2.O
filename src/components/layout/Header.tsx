@@ -1,0 +1,20 @@
+import { ChevronLeft, ChevronRight, Menu, Search } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+
+export function Header({ onMenu, solid }: { onMenu(): void; solid: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const onSearchPage = location.pathname === "/search";
+  return (
+    <header className={`header ${solid ? "solid" : ""}`}>
+      <button className="circle-btn mobile-menu" aria-label="Open menu" onClick={onMenu}><Menu /></button>
+      <div className="history-nav">
+        <button className="circle-btn" aria-label="Go back" onClick={() => navigate(-1)}><ChevronLeft /></button>
+        <button className="circle-btn" aria-label="Go forward" onClick={() => navigate(1)}><ChevronRight /></button>
+      </div>
+      {!onSearchPage && <label className="searchbox"><Search aria-hidden="true" /><input aria-label="Search music" type="search" placeholder="What do you want to play?" onKeyDown={e => { if (e.key === "Enter" && e.currentTarget.value.trim()) navigate(`/search?q=${encodeURIComponent(e.currentTarget.value)}`); }} /><kbd>/</kbd></label>}
+      <div className="header-spacer" />
+      <div className="profile" aria-label="Profile">M</div>
+    </header>
+  );
+}

@@ -1,0 +1,3 @@
+export const Loading = ({ rows = 5 }: { rows?: number }) => <div className="skeleton-list" aria-busy="true" aria-label="Loading">{Array.from({ length: rows }, (_, i) => <div className="skeleton-row" key={i}><span className="skeleton sq" /><span className="skeleton-lines"><span className="skeleton line" /><span className="skeleton line short" /></span></div>)}</div>;
+
+export const CardSkeletons = ({ count = 6, round = false }: { count?: number; round?: boolean }) => <>{Array.from({ length: count }, (_, i) => <div className="card skeleton-card" key={i} aria-hidden="true"><span className={`skeleton art ${round ? "round" : ""}`} /><span className="skeleton line" /><span className="skeleton line short" /></div>)}</>;

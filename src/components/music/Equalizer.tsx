@@ -1,0 +1,1 @@
+export const Equalizer = ({ paused = false }: { paused?: boolean }) => <span className={`equalizer ${paused ? "paused" : ""}`} aria-label={paused ? "Paused" : "Now playing"} role="img"><i /><i /><i /></span>;

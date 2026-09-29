@@ -1,0 +1,55 @@
+@property --pct { syntax: "<percentage>"; inherits: true; initial-value: 0%; }
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg: #08080a;
+  --surface: #121214;
+  --surface-2: #1b1b1f;
+  --surface-3: #26262b;
+  --elevated: #2a2a30;
+  --hover: rgba(255, 255, 255, .07);
+  --line: rgba(255, 255, 255, .08);
+
+  /* Text */
+  --text: #f6f6f4;
+  --text-2: #b0b0b8;
+  --text-3: #7a7a84;
+
+  /* Brand accent (the app's own lime, not Spotify green) */
+  --accent: #c8f45d;
+  --accent-hover: #d8ff76;
+  --on-accent: #10140a;
+  --danger: #ff8a7a;
+
+  /* Shape & depth */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, .5);
+  --shadow-pop: 0 16px 48px rgba(0, 0, 0, .6);
+
+  /* Layout */
+  --sidebar-w: 300px;
+  --rail-w: 76px;
+  --player-h: 88px;
+  --header-h: 64px;
+  --nav-h: 62px;
+  --mini-h: 60px;
+  --pad: 24px;
+  --gap: 8px;
+
+  /* Motion */
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --fast: 150ms;
+  --med: 250ms;
+  --slow: 420ms;
+
+  --font: "DM Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (max-width: 767px) {
+  :root { --pad: 16px; --header-h: 56px; }
+}
