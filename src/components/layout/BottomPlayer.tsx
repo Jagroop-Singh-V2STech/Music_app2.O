@@ -1,4 +1,4 @@
-import { ListMusic, Maximize2, Pause, Play } from "lucide-react";
+import { ListMusic, Maximize2, MicVocal, Pause, Play } from "lucide-react";
 import { NowPlaying } from "../player/NowPlaying";
 import { PlayerControls } from "../player/PlayerControls";
 import { ProgressBar } from "../player/ProgressBar";
@@ -6,7 +6,7 @@ import { VolumeControl } from "../player/VolumeControl";
 import { usePlayer } from "../../context/PlayerContext";
 import { LikeButton } from "../player/LikeButton";
 
-export function BottomPlayer({ onQueue, onExpand, queueOpen = false }: { onQueue(): void; onExpand(): void; queueOpen?: boolean }) {
+export function BottomPlayer({ onQueue, onLyrics, onExpand, queueOpen = false, lyricsOpen = false }: { onQueue(): void; onLyrics(): void; onExpand(): void; queueOpen?: boolean; lyricsOpen?: boolean }) {
   const p = usePlayer();
   return (
     <footer className={`bottom-player ${p.currentSong ? "has-song" : ""}`}>
@@ -15,6 +15,7 @@ export function BottomPlayer({ onQueue, onExpand, queueOpen = false }: { onQueue
       <NowPlaying onOpen={onExpand} />
       <div className="player-center"><PlayerControls /><ProgressBar /></div>
       <div className="player-actions">
+        <button className={`icon-button ${lyricsOpen ? "active" : ""}`} aria-label="Lyrics" title="Lyrics" aria-pressed={lyricsOpen} disabled={!p.currentSong} onClick={onLyrics}><MicVocal /></button>
         <button className={`icon-button ${queueOpen ? "active" : ""}`} aria-label="Queue" aria-pressed={queueOpen} onClick={onQueue}><ListMusic /></button>
         <VolumeControl />
         <button className="icon-button" aria-label="Open full-screen player" onClick={onExpand} disabled={!p.currentSong}><Maximize2 /></button>

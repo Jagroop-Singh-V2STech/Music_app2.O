@@ -5,6 +5,7 @@ import { Header } from "./components/layout/Header";
 import { BottomPlayer } from "./components/layout/BottomPlayer";
 import { MobileNavigation } from "./components/layout/MobileNavigation";
 import { QueueDrawer } from "./components/player/QueueDrawer";
+import { LyricsDrawer } from "./components/player/LyricsDrawer";
 import { ExpandedPlayer } from "./components/player/ExpandedPlayer";
 import { CreatePlaylistModal } from "./components/playlist/CreatePlaylistModal";
 import { Home } from "./pages/Home";
@@ -28,6 +29,7 @@ const readCollapsed = () => { try { return localStorage.getItem(COLLAPSE_KEY) ==
 export default function App() {
   const [create, setCreate] = useState(false);
   const [queue, setQueue] = useState(false);
+  const [lyrics, setLyrics] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [drawer, setDrawer] = useState(false);
@@ -42,7 +44,9 @@ export default function App() {
   const openCreate = useCallback(() => { setDrawer(false); setCreate(true); }, []);
   const closeQueue = useCallback(() => setQueue(false), []);
   const closeExpanded = useCallback(() => setExpanded(false), []);
-  const openQueue = useCallback(() => { setExpanded(false); setQueue(value => !value); }, []);
+  const openQueue = useCallback(() => { setExpanded(false); setLyrics(false); setQueue(value => !value); }, []);
+  const closeLyrics = useCallback(() => setLyrics(false), []);
+  const openLyrics = useCallback(() => { setQueue(false); setLyrics(value => !value); }, []);
 
   // New page: close the mobile drawer and start at the top.
   useEffect(() => { setDrawer(false); scroller.current?.scrollTo({ top: 0 }); setScrolled(false); }, [location.pathname]);
@@ -76,7 +80,8 @@ export default function App() {
         </div>
       </main>
       <QueueDrawer open={queue} close={closeQueue} />
-      <BottomPlayer onQueue={openQueue} onExpand={() => setExpanded(true)} queueOpen={queue} />
+      <LyricsDrawer open={lyrics} close={closeLyrics} />
+      <BottomPlayer onQueue={openQueue} onLyrics={openLyrics} onExpand={() => setExpanded(true)} queueOpen={queue} lyricsOpen={lyrics} />
       <MobileNavigation />
       <ExpandedPlayer open={expanded} onClose={closeExpanded} onQueue={openQueue} />
       {create && <CreatePlaylistModal onClose={() => setCreate(false)} />}

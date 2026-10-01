@@ -155,6 +155,32 @@
 .xp-foot .volume { width: min(280px, 100%); }
 .xp-foot .volume .range { flex: 1; width: auto; }
 
+/* ---------- Lyrics ---------- */
+.lyrics-drawer { width: min(440px, calc(100vw - 16px)); }
+.lyrics-drawer h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lyrics-drawer header > div { min-width: 0; }
+.lyrics { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px 20px 40%; }
+.lyrics-drawer .lyrics { margin: 4px 8px 8px; border-radius: var(--radius-sm); background: linear-gradient(180deg, hsl(var(--hue) 45% 30%), hsl(var(--hue) 40% 16%)); }
+.lyrics-lines { display: grid; gap: 14px; }
+.lyric { text-align: left; font-size: 24px; font-weight: 800; line-height: 1.25; letter-spacing: -.01em; color: rgba(255, 255, 255, .42); transition: color var(--med), transform var(--med) var(--ease-out); transform-origin: left center; }
+.lyric.past { color: rgba(255, 255, 255, .7); }
+.lyric.active { color: #fff; transform: scale(1.02); }
+.lyric:hover { color: #fff; }
+.lyrics-lines.plain p { font-size: 20px; font-weight: 700; line-height: 1.45; color: rgba(255, 255, 255, .88); }
+.lyrics-note, .lyrics-credit { display: block; margin-top: 24px; font-size: 12px; color: var(--text-2); }
+.lyrics-message { display: grid; justify-items: center; gap: 8px; padding: 56px 16px; text-align: center; color: var(--text-2); }
+.lyrics-message svg { width: 36px; height: 36px; margin-bottom: 4px; }
+.lyrics-message strong { color: var(--text); font-size: 18px; }
+.lyrics-message .pill { margin-top: 8px; }
+.lyrics-skeleton { display: grid; gap: 18px; }
+.lyrics-skeleton span { height: 24px; border-radius: 6px; opacity: .6; }
+.xp-head-actions { display: flex; gap: 4px; }
+.xp-head .icon-button.active { color: var(--accent); }
+.xp-body.with-lyrics { min-height: 0; justify-content: flex-end; }
+.xp-lyrics { padding: 16px 0 30%; mask-image: linear-gradient(transparent, #000 8%, #000 80%, transparent); }
+.xp-lyrics .lyric { font-size: 22px; }
+.expanded-player.inline .xp-lyrics { flex: none; height: 50dvh; }
+
 /* ---------- Tablet ---------- */
 @media (max-width: 1023px) {
   .bottom-player { grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto; }

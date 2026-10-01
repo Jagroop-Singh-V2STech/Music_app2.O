@@ -5,12 +5,13 @@ import type { Song } from "../../types/music";
 import { usePlayer } from "../../context/PlayerContext";
 import { Artwork } from "./Artwork";
 
-interface MediaCardProps { title: string; subtitle: ReactNode; songs: Song[]; art?: Partial<Song>; seed?: string; round?: boolean; to?: string; overlay?: ReactNode; className?: string }
+interface MediaCardProps { title: string; subtitle: ReactNode; songs: Song[]; songId?: string; art?: Partial<Song>; seed?: string; round?: boolean; to?: string; overlay?: ReactNode; className?: string }
 
 // Shared card: the whole card opens `to` (or plays), and the floating button plays/pauses its songs.
-export function MediaCard({ title, subtitle, songs, art, seed, round = false, to, overlay, className = "" }: MediaCardProps) {
+export function MediaCard({ title, subtitle, songs, songId, art, seed, round = false, to, overlay, className = "" }: MediaCardProps) {
   const { play, toggle, currentSong, playing } = usePlayer();
-  const active = !!currentSong && songs.some(s => s.id === currentSong.id);
+  // A single-song card (songId) queues `songs` after it, but is only "playing" when that song is.
+  const active = !!currentSong && (songId ? currentSong.id === songId : songs.some(s => s.id === currentSong.id));
   const start = () => { if (active) toggle(); else if (songs[0]) void play(songs[0], songs); };
   return (
     <article className={`card ${active ? "is-active" : ""} ${className}`}>

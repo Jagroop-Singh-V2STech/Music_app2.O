@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { ChevronDown, ListMusic } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronDown, ListMusic, MicVocal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePlayer } from "../../context/PlayerContext";
 import { Artwork } from "../music/Artwork";
@@ -7,6 +7,7 @@ import { PlayerControls } from "./PlayerControls";
 import { ProgressBar } from "./ProgressBar";
 import { VolumeControl } from "./VolumeControl";
 import { LikeButton } from "./LikeButton";
+import { LyricsView } from "./LyricsView";
 import { hueFrom, primaryArtist } from "../../utils/library";
 
 interface ExpandedPlayerProps { open?: boolean; inline?: boolean; onClose?(): void; onQueue(): void }
@@ -14,6 +15,7 @@ interface ExpandedPlayerProps { open?: boolean; inline?: boolean; onClose?(): vo
 // Full-screen "now playing" view: an overlay sheet on mobile / from the maximize button, or inline on /now-playing.
 export function ExpandedPlayer({ open = true, inline = false, onClose, onQueue }: ExpandedPlayerProps) {
   const { currentSong, playing, error } = usePlayer();
+  const [showLyrics, setShowLyrics] = useState(false);
   useEffect(() => { if (!open || inline) return; const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose?.(); }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [open, inline, onClose]);
   const hue = hueFrom(currentSong?.title ?? "music");
   return (
@@ -22,10 +24,15 @@ export function ExpandedPlayer({ open = true, inline = false, onClose, onQueue }
       <header className="xp-head">
         {!inline ? <button className="icon-button" aria-label="Close now playing" onClick={onClose}><ChevronDown /></button> : <span />}
         <span className="eyebrow">Now playing</span>
-        <button className="icon-button" aria-label="Open queue" onClick={onQueue}><ListMusic /></button>
+        <div className="xp-head-actions">
+          <button className={`icon-button ${showLyrics ? "active" : ""}`} aria-label={showLyrics ? "Hide lyrics" : "Show lyrics"} aria-pressed={showLyrics} disabled={!currentSong} onClick={() => setShowLyrics(v => !v)}><MicVocal /></button>
+          <button className="icon-button" aria-label="Open queue" onClick={onQueue}><ListMusic /></button>
+        </div>
       </header>
-      <div className="xp-body">
-        <div className={`vinyl ${playing ? "spinning" : ""}`}><div className="vinyl-disc"><Artwork song={currentSong} seed={currentSong?.title} round /></div></div>
+      <div className={`xp-body ${showLyrics ? "with-lyrics" : ""}`}>
+        {showLyrics && open && currentSong
+          ? <LyricsView className="xp-lyrics" />
+          : <div className={`vinyl ${playing ? "spinning" : ""}`}><div className="vinyl-disc"><Artwork song={currentSong} seed={currentSong?.title} round /></div></div>}
         <div className="xp-info">
           <div className="xp-meta">
             <h2 key={currentSong?.id} className="fade-in">{currentSong?.title ?? "Nothing playing"}</h2>

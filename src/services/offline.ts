@@ -1,8 +1,9 @@
 import type { Song } from "../types/music";
 import { getSongDetails } from "./api";
+import { fetchLyricsCandidates, type LyricsCandidate } from "./lyrics";
 
 // Downloaded audio lives in IndexedDB: "tracks" holds metadata (cheap to list), "audio" holds the blobs.
-export interface OfflineTrack { id: string; song: Song; size: number; savedAt: string }
+export interface OfflineTrack { id: string; song: Song; size: number; savedAt: string; lyrics?: LyricsCandidate[] }
 
 const DB_NAME = "mymusic-offline";
 export const IMAGE_CACHE = "mymusic-images"; // shared with public/sw.js
@@ -39,6 +40,8 @@ export async function listDownloads() {
   return tracks.sort((a, b) => b.savedAt.localeCompare(a.savedAt));
 }
 
+export const getTrack = (id: string) => run<OfflineTrack | undefined>(["tracks"], "readonly", tx => tx.objectStore("tracks").get(id)).catch(() => undefined);
+
 export const getAudio = (id: string) => run<Blob | undefined>(["audio"], "readonly", tx => tx.objectStore("audio").get(id)).catch(() => undefined);
 
 export async function removeDownload(id: string) {
@@ -69,7 +72,9 @@ export async function downloadSong(song: Song, onProgress: (fraction: number) =>
     if (total) onProgress(received / total);
   }
   const blob = new Blob(chunks, { type: response.headers.get("content-type") || "audio/mpeg" });
-  const track: OfflineTrack = { id: song.id, song: { ...song, audioUrl }, size: blob.size, savedAt: new Date().toISOString() };
+  // Lyrics are saved with the track so they show offline too; a lookup failure shouldn't fail the download.
+  const lyrics = await fetchLyricsCandidates(song).catch(() => undefined);
+  const track: OfflineTrack = { id: song.id, song: { ...song, audioUrl }, size: blob.size, savedAt: new Date().toISOString(), lyrics };
   await run(["tracks", "audio"], "readwrite", tx => { tx.objectStore("tracks").put(track); tx.objectStore("audio").put(blob, song.id); });
   downloadedIds.add(song.id);
   void cacheArtwork(song.imageUrl);
