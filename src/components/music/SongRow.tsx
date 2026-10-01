@@ -1,4 +1,4 @@
-import { Heart, ListEnd, ListPlus, ListStart, MoreHorizontal, Pause, Play, UserRound } from "lucide-react";
+import { ArrowDownCircle, Heart, ListEnd, ListPlus, ListStart, MoreHorizontal, Pause, Play, Trash2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Song } from "../../types/music";
@@ -6,6 +6,8 @@ import { Artwork } from "./Artwork";
 import { Equalizer } from "./Equalizer";
 import { usePlayer } from "../../context/PlayerContext";
 import { useMusic } from "../../context/MusicContext";
+import { useOffline } from "../../context/OfflineContext";
+import { DownloadIndicator } from "./DownloadIndicator";
 import { AddToPlaylistModal } from "../playlist/AddToPlaylistModal";
 import { useToast } from "../common/Toast";
 import { primaryArtist } from "../../utils/library";
@@ -16,6 +18,8 @@ interface SongRowProps { song: Song; index?: number; draggable?: boolean; list?:
 export function SongRow({ song, index, draggable = false, list }: SongRowProps) {
   const { play, addQueue, currentSong, playing, toggle } = usePlayer();
   const { isFavorite, toggleFavorite } = useMusic();
+  const offline = useOffline();
+  const downloadState = offline.status(song.id);
   const [menu, setMenu] = useState(false);
   const [menuUp, setMenuUp] = useState(false);
   const [modal, setModal] = useState(false);
@@ -43,7 +47,7 @@ export function SongRow({ song, index, draggable = false, list }: SongRowProps) 
       <button className="row-art-btn" onClick={start} tabIndex={-1} aria-hidden="true"><Artwork song={song} className="row-art" /></button>
       <div className="song-copy">
         <button className="song-title" onClick={start}>{song.title}</button>
-        <Link className="song-artist" to={`/artist/${encodeURIComponent(primaryArtist(song.artist))}`}>{song.artist}</Link>
+        <span className="song-sub"><DownloadIndicator id={song.id} /><Link className="song-artist" to={`/artist/${encodeURIComponent(primaryArtist(song.artist))}`}>{song.artist}</Link></span>
       </div>
       <span className="song-album">{song.album ?? "Single"}</span>
       <button className={`icon-button like-btn ${liked ? "liked" : ""}`} aria-pressed={liked} aria-label={liked ? "Remove from Liked Songs" : "Save to Liked Songs"} onClick={() => { toggleFavorite(song); toast(liked ? "Removed from Liked Songs" : "Added to Liked Songs"); }}><Heart fill={liked ? "currentColor" : "none"} /></button>
@@ -55,6 +59,9 @@ export function SongRow({ song, index, draggable = false, list }: SongRowProps) 
           <button role="menuitem" onClick={act(() => { addQueue(song, true); toast("Playing next"); })}><ListStart /> Play next</button>
           <button role="menuitem" onClick={act(() => { addQueue(song); toast("Added to queue"); })}><ListEnd /> Add to queue</button>
           <button role="menuitem" onClick={act(() => setModal(true))}><ListPlus /> Add to playlist</button>
+          {downloadState === "downloaded"
+            ? <button role="menuitem" onClick={act(() => { void offline.remove([song.id]); toast("Removed from Downloads"); })}><Trash2 /> Remove download</button>
+            : <button role="menuitem" disabled={downloadState === "downloading"} onClick={act(() => offline.download([song]))}><ArrowDownCircle /> {downloadState === "downloading" ? "Downloading…" : "Download"}</button>}
           <Link role="menuitem" to={`/artist/${encodeURIComponent(primaryArtist(song.artist))}`} onClick={() => setMenu(false)}><UserRound /> Go to artist</Link>
         </div>}
       </div>

@@ -1,6 +1,7 @@
-import { Clock3, Disc3, Heart, House, Library, ListMusic, MicVocal, PanelLeftClose, PanelLeftOpen, Plus, Search, X } from "lucide-react";
+import { ArrowDownCircle, Clock3, Disc3, Heart, House, Library, ListMusic, MicVocal, PanelLeftClose, PanelLeftOpen, Plus, Search, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useMusic } from "../../context/MusicContext";
+import { useOffline } from "../../context/OfflineContext";
 import type { Song } from "../../types/music";
 import { useToast } from "../common/Toast";
 import { Artwork } from "../music/Artwork";
@@ -9,6 +10,7 @@ interface SidebarProps { onCreate(): void; collapsed: boolean; onToggle(): void;
 
 export function Sidebar({ onCreate, collapsed, onToggle, mobileOpen, onClose }: SidebarProps) {
   const { playlists, favorites, addToPlaylists } = useMusic();
+  const { songs: downloads } = useOffline();
   const toast = useToast();
   const drop = (event: React.DragEvent, playlistId: string) => { event.preventDefault(); event.currentTarget.classList.remove("drop-target"); try { const song = JSON.parse(event.dataTransfer.getData("song")) as Song; const names = addToPlaylists(song, [playlistId]); toast(names.length ? `Added to ${names[0]}` : "Song is already in this playlist"); } catch { /* non-song drag */ } };
   const link = (to: string, Icon: typeof House, label: string, end = false) => <NavLink to={to} end={end} title={collapsed ? label : undefined} className="nav-link"><Icon aria-hidden="true" /><span className="nav-label">{label}</span></NavLink>;
@@ -41,6 +43,10 @@ export function Sidebar({ onCreate, collapsed, onToggle, mobileOpen, onClose }: 
             <NavLink to="/favorites" className="playlist-link" title={collapsed ? "Liked Songs" : undefined}>
               <span className="liked-tile"><Heart fill="currentColor" /></span>
               <span className="nav-label"><strong>Liked Songs</strong><small>Playlist • {favorites.length} songs</small></span>
+            </NavLink>
+            <NavLink to="/downloads" className="playlist-link" title={collapsed ? "Downloads" : undefined}>
+              <span className="liked-tile downloads-tile"><ArrowDownCircle /></span>
+              <span className="nav-label"><strong>Downloads</strong><small>Offline • {downloads.length} songs</small></span>
             </NavLink>
             {playlists.map(p => (
               <NavLink key={p.id} to={`/playlist/${p.id}`} className="playlist-link" title={collapsed ? p.name : undefined}

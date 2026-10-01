@@ -1,0 +1,10 @@
+{
+  "name": "MyMusic",
+  "short_name": "MyMusic",
+  "description": "Stream and download music to listen offline.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08080a",
+  "theme_color": "#08080a",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

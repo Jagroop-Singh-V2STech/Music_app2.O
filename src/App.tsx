@@ -15,6 +15,8 @@ import { RecentlyPlayed } from "./pages/RecentlyPlayed";
 import { Queue } from "./pages/Queue";
 import { PlaylistDetails } from "./pages/PlaylistDetails";
 import { Artist } from "./pages/Artist";
+import { FeaturedPlaylist } from "./pages/FeaturedPlaylist";
+import { Downloads } from "./pages/Downloads";
 import { usePlayer } from "./context/PlayerContext";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 
@@ -67,6 +69,8 @@ export default function App() {
             <Route path="/recently-played" element={<RecentlyPlayed />} />
             <Route path="/queue" element={<Queue />} />
             <Route path="/playlist/:id" element={<PlaylistDetails />} />
+            <Route path="/featured/:id" element={<FeaturedPlaylist />} />
+            <Route path="/downloads" element={<Downloads />} />
             <Route path="/now-playing" element={<div className="now-playing-page"><ExpandedPlayer inline onQueue={openQueue} /></div>} />
           </Routes>
         </div>

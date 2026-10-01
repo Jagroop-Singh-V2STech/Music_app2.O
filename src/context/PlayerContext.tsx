@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Song } from "../types/music";
 import { getSongDetails } from "../services/api";
+import { getAudio, isDownloaded } from "../services/offline";
 import { musicStorage } from "../utils/storage";
 import { useMusic } from "./MusicContext";
 
@@ -18,6 +19,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const { addRecent } = useMusic();
   const audio = useRef(new Audio());
   const requestId = useRef(0);
+  const objectUrl = useRef<string | undefined>(undefined);
   const [currentSong, setCurrentSong] = useState<Song>();
   const [queue, setQueueState] = useState(musicStorage.queue);
   const [playing, setPlaying] = useState(false);
@@ -35,11 +37,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setError(undefined); setLoading(true); setPlaying(false);
     if (list) setQueueState(list.filter(item => item.id !== song.id));
     try {
-      const playable = song.audioUrl || !song.pageUrl ? song : { ...song, ...(await getSongDetails(song.pageUrl)) };
+      // Downloaded songs play from IndexedDB; everything else streams.
+      const saved = await getAudio(song.id);
+      if (!saved && !navigator.onLine) throw new Error("You're offline. Only downloaded songs can play.");
+      const playable = saved || song.audioUrl || !song.pageUrl ? song : { ...song, ...(await getSongDetails(song.pageUrl)) };
       if (id !== requestId.current) return;
-      if (!playable.audioUrl) throw new Error("No playable audio was found for this song");
+      if (!saved && !playable.audioUrl) throw new Error("No playable audio was found for this song");
       const player = audio.current;
-      player.pause(); player.src = playable.audioUrl; player.load();
+      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+      objectUrl.current = saved ? URL.createObjectURL(saved) : undefined;
+      player.pause(); player.src = objectUrl.current ?? playable.audioUrl!; player.load();
       setCurrentSong(playable); setProgress(0); setDuration(0);
       await player.play();
       if (id !== requestId.current) return;
@@ -53,8 +60,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [addRecent]);
 
   const next = useCallback(() => {
-    if (!queue.length) { setPlaying(false); return; }
-    const index = shuffle ? Math.floor(Math.random() * queue.length) : 0;
+    // Offline, only downloaded songs are reachable, so skip past the rest.
+    const candidates = queue.map((song, index) => ({ song, index })).filter(({ song }) => navigator.onLine || isDownloaded(song.id));
+    if (!candidates.length) { setPlaying(false); return; }
+    const index = candidates[shuffle ? Math.floor(Math.random() * candidates.length) : 0].index;
     const song = queue[index];
     setQueueState(items => items.filter((_, itemIndex) => itemIndex !== index));
     void play(song);

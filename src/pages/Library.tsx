@@ -1,6 +1,7 @@
-import { Heart, Plus } from "lucide-react";
+import { ArrowDownCircle, Heart, Plus } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useMusic } from "../context/MusicContext";
+import { useOffline } from "../context/OfflineContext";
 import { PageHeader } from "../components/common/PageHeader";
 import { EmptyState } from "../components/common/EmptyState";
 import { PlaylistCard } from "../components/playlist/PlaylistCard";
@@ -14,6 +15,7 @@ const TABS: [LibraryTab, string, string][] = [["all", "All", "/library"], ["play
 
 export const Library = ({ tab = "all", onCreate }: { tab?: LibraryTab; onCreate?(): void }) => {
   const { playlists, favorites, recent } = useMusic();
+  const { songs: downloads } = useOffline();
   const songs = uniqueSongs([...favorites, ...playlists.flatMap(p => p.songs), ...recent]);
   const albums = deriveAlbums(songs);
   const artists = deriveArtists(songs);
@@ -27,6 +29,7 @@ export const Library = ({ tab = "all", onCreate }: { tab?: LibraryTab; onCreate?
         {tab === "all" && <h2>Playlists</h2>}
         <div className="card-grid">
           <MediaCard title="Liked Songs" subtitle={`Playlist • ${favorites.length} songs`} songs={favorites} to="/favorites" overlay={<span className="liked-art"><Heart fill="currentColor" /></span>} />
+          <MediaCard title="Downloads" subtitle={`Offline • ${downloads.length} songs`} songs={downloads} to="/downloads" overlay={<span className="liked-art downloads-tile"><ArrowDownCircle /></span>} />
           {playlists.map(p => <PlaylistCard playlist={p} key={p.id} />)}
           {onCreate && <button className="card create-card" onClick={onCreate}><span className="create-art"><Plus /></span><strong>Create playlist</strong><span className="card-sub">Name it, add a cover, fill it up</span></button>}
         </div>

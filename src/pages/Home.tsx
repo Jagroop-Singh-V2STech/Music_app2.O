@@ -11,6 +11,8 @@ import { ArtistCard } from "../components/music/ArtistCard";
 import { MixCard } from "../components/music/MixCard";
 import { Artwork } from "../components/music/Artwork";
 import { PlaylistCard } from "../components/playlist/PlaylistCard";
+import { FeaturedCard } from "../components/music/FeaturedCard";
+import { featuredPlaylists } from "../data/featuredPlaylists";
 import type { Song } from "../types/music";
 import { deriveAlbums, deriveArtists, deriveMixes, greeting, recentlyAdded, uniqueSongs } from "../utils/library";
 
@@ -54,6 +56,8 @@ export function Home() {
       </header>
 
       {recent.length > 0 && <Shelf title="Recently Played" to="/recently-played">{recent.slice(0, 12).map(s => <SongCard song={s} list={recent} key={s.id} />)}</Shelf>}
+
+      <Shelf title="Made by MyMusic" subtitle="Handpicked playlists for every mood">{featuredPlaylists.map(p => <FeaturedCard playlist={p} key={p.id} />)}</Shelf>
 
       {mixes.length > 0 && <Shelf title="Made For You" subtitle="Mixes built from what you play and like">{mixes.map(m => <MixCard mix={m} key={m.id} />)}</Shelf>}
 

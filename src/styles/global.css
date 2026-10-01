@@ -289,6 +289,17 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 }
 /* The mix name is already on the artwork; keep the title as the accessible click target only. */
 .mix-card .card-title { font-size: 0; line-height: 0; height: 0; }
+.featured-cover {
+  position: relative; display: flex; align-items: flex-end; aspect-ratio: 1; overflow: hidden;
+  padding: 12px; border-radius: var(--radius-sm); color: #fff;
+  background:
+    radial-gradient(circle at 85% 15%, hsl(calc(var(--hue) + 40) 85% 65% / .75), transparent 55%),
+    linear-gradient(135deg, hsl(var(--hue) 70% 48%), hsl(calc(var(--hue) - 30) 60% 22%));
+}
+.featured-cover::before { content: ""; position: absolute; top: 10px; left: 12px; width: 18px; height: 18px; border-radius: 50%; background: rgba(255, 255, 255, .9); box-shadow: inset 0 0 0 5px hsl(var(--hue) 60% 35%); }
+.featured-cover-title { font-weight: 900; font-size: clamp(18px, 1.6vw, 24px); line-height: 1.05; letter-spacing: -.03em; text-shadow: 0 2px 12px rgba(0, 0, 0, .25); overflow-wrap: anywhere; }
+.header-art .featured-cover-title, .featured-cover.header-art .featured-cover-title { font-size: clamp(22px, 2.6vw, 34px); }
+.card:hover .featured-cover { filter: brightness(1.06); }
 .create-card { border: 1px dashed var(--line); }
 .create-art { aspect-ratio: 1; margin-bottom: 8px; border-radius: var(--radius-sm); display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); transition: color var(--fast), background-color var(--fast); }
 .create-art svg { width: 40%; height: 40%; transition: transform var(--med) var(--ease); }
@@ -529,3 +540,21 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .artwork img { transition: opacity .01ms; }
 }
+
+/* Offline downloads */
+.song-sub { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.download-indicator { flex: none; width: 14px; height: 14px; display: grid; place-items: center; color: var(--accent); }
+.download-indicator.done { border-radius: 50%; background: var(--accent); color: var(--on-accent); }
+.download-indicator.done svg { width: 10px; height: 10px; }
+.progress-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+.progress-ring circle { fill: none; stroke-width: 2.5; stroke: var(--line); }
+.progress-ring circle + circle { stroke: var(--accent); stroke-linecap: round; transition: stroke-dasharray var(--fast); }
+.download-toggle.on { color: var(--accent); }
+.download-toggle .progress-ring { width: 26px; height: 26px; }
+.download-toggle:disabled { cursor: default; }
+.liked-tile.downloads-tile, .liked-art.downloads-tile { background: linear-gradient(135deg, #0f6b3a, #5fd88a); }
+.offline-pill { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; margin-right: 12px; border-radius: 999px; background: var(--surface-2); color: var(--text); font-size: 13px; font-weight: 700; }
+.offline-pill svg { width: 16px; height: 16px; color: var(--accent); }
+.pill.outline { box-shadow: inset 0 0 0 1px var(--line); color: var(--text-2); }
+.pill.outline:hover { color: var(--text); }
+.context-menu button:disabled { opacity: .5; cursor: default; }
