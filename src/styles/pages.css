@@ -140,3 +140,8 @@
   .top-result strong { font-size: 24px; }
   .top-songs .song-row { grid-template-columns: 48px minmax(0, 1fr) 40px 40px; }
 }
+
+/* Artist: expand to every song found */
+.artist-more { display: flex; align-items: center; gap: 16px; min-height: 32px; margin: 8px 0 24px; padding: 0 16px; }
+.artist-finding { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.artist-finding svg { width: 14px; height: 14px; }
