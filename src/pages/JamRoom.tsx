@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Headphones, Link2, LoaderCircle, LogOut, Play, Plus, Share2, Users } from "lucide-react";
+import { Headphones, Link2, LoaderCircle, LogOut, Play, Plus, QrCode, Share2, Users } from "lucide-react";
 import { useJam } from "../context/JamContext";
 import { usePlayer } from "../context/PlayerContext";
 import { jamErrorMessage, jamInviteUrl, jamSession, normalizeRoomCode, warmUpJamServer } from "../services/jam";
@@ -17,6 +17,9 @@ import { JamQueue } from "../components/jam/JamQueue";
 import { JamConnection } from "../components/jam/JamConnection";
 import { JamAddSongModal } from "../components/jam/JamAddSongModal";
 import { formatTime } from "../utils/formatTime";
+
+// Loaded on demand so the QR encoder isn't in the main bundle.
+const JamInviteModal = lazy(() => import("../components/jam/JamInviteModal"));
 import { hueFrom } from "../utils/library";
 
 /** /jam/:roomId — the room itself, or a join prompt when you arrive from an invite link. */
@@ -109,6 +112,7 @@ function RoomView({ room }: { room: JamRoomState }) {
   const toast = useToast();
   const [adding, setAdding] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [showQr, setShowQr] = useState(false);
   const song = room.currentItem?.song;
   const online = room.participants.filter(p => p.online).length;
   const activity = jam.lastCause && describe(jam.lastCause, jam.me, room);
@@ -166,12 +170,14 @@ function RoomView({ room }: { room: JamRoomState }) {
 
       <footer className="jam-actions">
         <button className="primary" onClick={() => void copy()}><Link2 aria-hidden="true" /> Copy invite link</button>
+        <button className="secondary" onClick={() => setShowQr(true)}><QrCode aria-hidden="true" /> QR code</button>
         {share && <button className="secondary" onClick={share}><Share2 aria-hidden="true" /> Share</button>}
         <button className="secondary" onClick={() => void jam.leave()}><LogOut aria-hidden="true" /> Leave Jam</button>
         {jam.isHost && <button className="text-btn jam-end" onClick={() => setConfirmEnd(true)}>End Jam for everyone</button>}
       </footer>
 
       {adding && <JamAddSongModal onClose={() => setAdding(false)} />}
+      {showQr && <Suspense fallback={null}><JamInviteModal roomId={room.roomId} url={invite} onCopy={() => void copy()} onShare={share} onClose={() => setShowQr(false)} /></Suspense>}
       {confirmEnd && (
         <Modal title="End the Jam for everyone?" onClose={() => setConfirmEnd(false)}>
           <p className="muted">Everyone will be disconnected and the invite link will stop working. To hand over instead, make someone else the host and leave.</p>

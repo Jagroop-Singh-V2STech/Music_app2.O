@@ -96,6 +96,13 @@
 .jam-pick { grid-template-columns: 44px minmax(0, 1fr) 32px 32px; }
 .jam-pick .icon-button { opacity: 1; }
 
+/* Invite QR */
+.jam-invite { display: grid; justify-items: center; gap: 12px; text-align: center; }
+.jam-qr { width: min(240px, 70vw); aspect-ratio: 1; border-radius: var(--radius); box-shadow: var(--shadow-card); animation: modal-in var(--slow) var(--ease-out); }
+.jam-code-lg { font-size: 18px; padding: 4px 12px; }
+.jam-invite + .modal-actions { justify-content: center; }
+.jam-invite + .modal-actions svg { width: 18px; }
+
 /* ---------- Start / join ---------- */
 .jam-entry { display: grid; gap: 20px; max-width: 880px; }
 .jam-field { display: grid; gap: 6px; color: var(--text-2); font-size: 13px; font-weight: 600; max-width: 420px; }
