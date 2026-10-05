@@ -1,5 +1,5 @@
 // App-shell service worker: lets MyMusic open offline. Song audio is stored in IndexedDB by the app itself.
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL = `mymusic-shell-${VERSION}`;
 const IMAGES = "mymusic-images"; // also written by src/services/offline.ts when a song is downloaded
 const FONTS = "mymusic-fonts";
@@ -50,6 +50,8 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
 
   if (request.mode === "navigate") return event.respondWith(navigate(request));
+  // Live APIs (e.g. Jam rooms) must never be served from cache.
+  if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) return;
   // Built assets are content-hashed, so a cached copy is always correct.
   if (url.origin === self.location.origin) return event.respondWith(cacheFirst(request, SHELL));
   if (url.hostname === "fonts.googleapis.com" || url.hostname === "fonts.gstatic.com") return event.respondWith(cacheFirst(request, FONTS));

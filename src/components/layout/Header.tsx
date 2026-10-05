@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Menu, Search, WifiOff } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useOffline } from "../../context/OfflineContext";
+import { JamPill } from "../jam/JamButton";
 
 export function Header({ onMenu, solid }: { onMenu(): void; solid: boolean }) {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export function Header({ onMenu, solid }: { onMenu(): void; solid: boolean }) {
       </div>
       {!onSearchPage && <label className="searchbox"><Search aria-hidden="true" /><input aria-label="Search music" type="search" placeholder="What do you want to play?" onKeyDown={e => { if (e.key === "Enter" && e.currentTarget.value.trim()) navigate(`/search?q=${encodeURIComponent(e.currentTarget.value)}`); }} /><kbd>/</kbd></label>}
       <div className="header-spacer" />
+      <JamPill />
       {!online && <Link to="/downloads" className="offline-pill" title="You're offline — open your downloads"><WifiOff aria-hidden="true" />Offline</Link>}
       <div className="profile" aria-label="Profile">M</div>
     </header>

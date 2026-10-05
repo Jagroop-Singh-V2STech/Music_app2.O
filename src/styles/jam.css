@@ -1,0 +1,154 @@
+/* ---------- Jam: collaborative listening ---------- */
+
+/* Status dot shared by the header pill, connection label and avatars */
+.jam-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.connected .jam-dot, .jam-pill.idle .jam-dot { animation: jam-pulse 2.4s var(--ease) infinite; }
+.connecting .jam-dot, .reconnecting .jam-dot { background: #f2c94c; animation: jam-blink 1s ease-in-out infinite; }
+.disconnected .jam-dot { background: var(--danger); }
+
+/* Player entry point */
+.jam-button.live { position: relative; }
+.jam-button.live::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg); animation: jam-pulse 2.4s var(--ease) infinite; }
+
+/* Header pill (reuses .offline-pill) */
+.jam-pill { transition: background-color var(--fast), transform var(--fast) var(--ease); }
+.jam-pill:hover { background: var(--surface-3); }
+.jam-pill.attention { background: var(--accent); color: var(--on-accent); }
+.jam-pill.attention svg { color: var(--on-accent); }
+
+.jam-status { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-2); }
+.jam-code { display: inline-block; padding: 2px 8px; border-radius: var(--radius-sm); background: var(--surface-2); color: var(--text); font-size: 13px; font-weight: 700; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+
+/* ---------- Room ---------- */
+.jam-page { display: grid; gap: 24px; padding-bottom: 32px; }
+.jam-hero {
+  display: grid; gap: 6px;
+  margin: calc(-1 * var(--header-h)) calc(-1 * var(--pad)) 0;
+  padding: calc(var(--header-h) + 24px) var(--pad) 8px;
+  background: linear-gradient(180deg, hsl(var(--hue, 80) 40% 22% / .8), transparent);
+  transition: background var(--slow) var(--ease);
+}
+.jam-eyebrow { display: inline-flex; align-items: center; gap: 6px; }
+.jam-eyebrow svg { width: 16px; height: 16px; color: var(--accent); }
+.jam-hero h1 { font-size: clamp(28px, 5vw, 48px); font-weight: 800; letter-spacing: -.03em; line-height: 1.05; overflow-wrap: anywhere; }
+.jam-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; color: var(--text-2); font-size: 14px; }
+
+.jam-unlock { justify-self: center; height: 48px; padding: 0 28px; font-size: 16px; box-shadow: var(--shadow-card); }
+.jam-unlock svg { width: 18px; }
+
+.jam-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: 24px; align-items: start; }
+.jam-stage, .jam-panel { background: rgba(255, 255, 255, .035); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; min-width: 0; }
+.jam-stage { display: grid; justify-items: center; gap: 16px; text-align: center; position: sticky; top: calc(var(--header-h) + 8px); }
+.jam-art { width: min(320px, 70vw); border-radius: var(--radius); box-shadow: var(--shadow-pop); overflow: hidden; animation-duration: var(--slow); }
+.jam-art .artwork { border-radius: var(--radius); }
+.jam-now { display: grid; gap: 4px; max-width: 100%; }
+.jam-now h2 { font-size: 24px; font-weight: 800; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.jam-now p { color: var(--text-2); }
+.jam-controls { border: 0; margin: 0; padding: 0; min-width: 0; width: 100%; max-width: 520px; display: grid; gap: 12px; justify-items: center; transition: opacity var(--med) var(--ease); }
+.jam-controls:disabled { opacity: .5; }
+.jam-controls .progress { width: 100%; }
+.jam-activity { min-height: 20px; font-size: 13px; color: var(--text-3); }
+
+.jam-side { display: grid; gap: 24px; min-width: 0; }
+.jam-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.jam-panel-head h2 { font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+.jam-panel-head .pill { height: 32px; padding: 0 14px; font-size: 13px; }
+.jam-panel-head .pill svg { width: 16px; }
+.jam-panel-head .pill:disabled { opacity: .5; transform: none; }
+.jam-count { color: var(--text-3); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+/* Participants */
+.jam-people { list-style: none; display: grid; gap: 2px; margin: 0; padding: 0; }
+.jam-person { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 6px 8px; border-radius: var(--radius-sm); animation: jam-in var(--slow) var(--ease-out) backwards; transition: background-color var(--fast), opacity var(--med); }
+.jam-person:hover { background: var(--hover); }
+.jam-person.away { opacity: .55; }
+.jam-avatar { position: relative; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, hsl(var(--hue) 55% 48%), hsl(calc(var(--hue) + 50) 55% 28%)); }
+.jam-avatar .jam-dot { position: absolute; right: -1px; bottom: -1px; width: 12px; height: 12px; box-shadow: 0 0 0 2px var(--surface); }
+.jam-person.away .jam-avatar .jam-dot { background: var(--text-3); animation: none; }
+.jam-person-copy { display: grid; min-width: 0; }
+.jam-person-copy strong, .jam-person-copy small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jam-person-copy small { color: var(--text-2); font-size: 12px; }
+.jam-you { color: var(--text-2); font-weight: 500; }
+.jam-badge { padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.jam-person-actions { display: flex; gap: 2px; opacity: 0; transition: opacity var(--fast); }
+.jam-person:hover .jam-person-actions, .jam-person:focus-within .jam-person-actions { opacity: 1; }
+.jam-person-actions .icon-button svg { width: 16px; }
+
+/* Shared queue (reuses .queue-item rows) */
+.jam-queue { padding: 0; }
+.jam-queue .queue-copy:disabled { cursor: default; opacity: 1; }
+.jam-queue .queue-item .drag:disabled { cursor: default; opacity: .4; }
+.jam-queue-item { animation-duration: var(--med); }
+.jam-note { font-size: 13px; color: var(--text-2); margin-bottom: 12px; }
+.jam-panel .empty-state { padding: 24px 16px; }
+.jam-panel .empty-icon { width: 48px; height: 48px; }
+.jam-panel .empty-state h3 { font-size: 16px; }
+
+.jam-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; padding-top: 8px; }
+.jam-actions svg { width: 18px; }
+.jam-end, .primary.danger { color: var(--danger); }
+.primary.danger { background: var(--danger); color: #1a0703; }
+.primary.danger:hover:not(:disabled) { background: #ffa596; }
+
+/* Add-songs modal */
+.jam-modal-sub { font-size: 13px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .06em; margin: 8px 0 6px; }
+.jam-pick-list { display: grid; gap: 2px; max-height: min(420px, 50dvh); overflow-y: auto; margin: 0 -8px; }
+.jam-pick { grid-template-columns: 44px minmax(0, 1fr) 32px 32px; }
+.jam-pick .icon-button { opacity: 1; }
+
+/* ---------- Start / join ---------- */
+.jam-entry { display: grid; gap: 20px; max-width: 880px; }
+.jam-field { display: grid; gap: 6px; color: var(--text-2); font-size: 13px; font-weight: 600; max-width: 420px; }
+.jam-field.compact { max-width: none; }
+.jam-field input { height: 44px; padding: 0 14px; border-radius: var(--radius-sm); border: 1px solid transparent; background: var(--surface-3); color: var(--text); font-size: 15px; outline: 0; transition: border-color var(--fast), background-color var(--fast); }
+.jam-field input:focus { border-color: rgba(255, 255, 255, .5); background: #2e2e34; }
+.jam-entry-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.jam-card { display: grid; align-content: start; justify-items: start; gap: 10px; padding: 24px; border-radius: var(--radius-lg); background: var(--surface); transition: background-color var(--med) var(--ease); }
+.jam-card:hover { background: var(--surface-2); }
+.jam-card h2 { font-size: 20px; font-weight: 800; }
+.jam-card p { color: var(--text-2); }
+.jam-card .jam-field { width: 100%; }
+.jam-card button:disabled { opacity: .5; transform: none; }
+.jam-card-icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); color: var(--accent); }
+.jam-card-icon svg { width: 22px; height: 22px; }
+.jam-error { color: var(--danger); font-weight: 600; }
+.jam-callout { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; margin-bottom: 20px; border-radius: var(--radius); background: var(--surface-2); max-width: 880px; }
+.jam-callout span { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+
+.jam-join-card { display: grid; justify-items: center; gap: 12px; width: min(460px, 100%); margin: 24px auto 0; padding: 32px 24px; border-radius: var(--radius-lg); background: var(--surface); text-align: center; }
+.jam-join-card h1 { font-size: 32px; font-weight: 800; letter-spacing: -.02em; }
+.jam-join-card .jam-field { width: 100%; text-align: left; }
+.jam-join-card .primary { width: 100%; justify-content: center; }
+
+@keyframes jam-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(200, 244, 93, .5); } 50% { box-shadow: 0 0 0 5px rgba(200, 244, 93, 0); } }
+@keyframes jam-blink { 50% { opacity: .35; } }
+@keyframes jam-in { from { opacity: 0; transform: translateX(-8px); } }
+
+/* Toast tones */
+.toast.info svg { color: #4a4a52; }
+.toast.error svg { color: #c0392b; }
+
+/* ---------- Tablet ---------- */
+@media (max-width: 1023px) {
+  .jam-layout { grid-template-columns: minmax(0, 1fr); }
+  .jam-stage { position: static; }
+}
+
+/* ---------- Mobile: song → controls → people → queue → invite ---------- */
+@media (max-width: 767px) {
+  .jam-page { gap: 16px; }
+  .jam-hero { padding-bottom: 0; }
+  .jam-stage, .jam-panel { padding: 16px; }
+  .jam-art { width: min(260px, 72vw); }
+  .jam-now h2 { font-size: 20px; }
+  .jam-entry-grid { grid-template-columns: minmax(0, 1fr); }
+  .jam-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .jam-actions .primary, .jam-actions .secondary { justify-content: center; width: 100%; }
+  .jam-person-actions { opacity: 1; }
+  .jam-pill { margin-right: 4px; }
+}
+
+@media (hover: none) { .jam-person-actions { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .jam-dot, .jam-button.live::after, .jam-person { animation: none !important; }
+}

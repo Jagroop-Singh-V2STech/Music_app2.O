@@ -5,6 +5,7 @@ import { ProgressBar } from "../player/ProgressBar";
 import { VolumeControl } from "../player/VolumeControl";
 import { usePlayer } from "../../context/PlayerContext";
 import { LikeButton } from "../player/LikeButton";
+import { JamButton } from "../jam/JamButton";
 
 export function BottomPlayer({ onQueue, onLyrics, onExpand, queueOpen = false, lyricsOpen = false }: { onQueue(): void; onLyrics(): void; onExpand(): void; queueOpen?: boolean; lyricsOpen?: boolean }) {
   const p = usePlayer();
@@ -15,6 +16,7 @@ export function BottomPlayer({ onQueue, onLyrics, onExpand, queueOpen = false, l
       <NowPlaying onOpen={onExpand} />
       <div className="player-center"><PlayerControls /><ProgressBar /></div>
       <div className="player-actions">
+        <JamButton />
         <button className={`icon-button ${lyricsOpen ? "active" : ""}`} aria-label="Lyrics" title="Lyrics" aria-pressed={lyricsOpen} disabled={!p.currentSong} onClick={onLyrics}><MicVocal /></button>
         <button className={`icon-button ${queueOpen ? "active" : ""}`} aria-label="Queue" aria-pressed={queueOpen} onClick={onQueue}><ListMusic /></button>
         <VolumeControl />

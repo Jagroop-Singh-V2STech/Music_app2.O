@@ -1,4 +1,4 @@
-import { ArrowDownCircle, Clock3, Disc3, Heart, House, Library, ListMusic, MicVocal, PanelLeftClose, PanelLeftOpen, Plus, Search, X } from "lucide-react";
+import { ArrowDownCircle, Clock3, Disc3, Heart, House, Library, ListMusic, MicVocal, PanelLeftClose, PanelLeftOpen, Plus, Search, Users, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useMusic } from "../../context/MusicContext";
 import { useOffline } from "../../context/OfflineContext";
@@ -23,7 +23,7 @@ export function Sidebar({ onCreate, collapsed, onToggle, mobileOpen, onClose }: 
             <NavLink to="/" className="brand" aria-label="MyMusic home"><span className="brand-mark"><Disc3 /></span><span className="nav-label">MyMusic</span></NavLink>
             <button className="icon-button drawer-close" aria-label="Close menu" onClick={onClose}><X /></button>
           </div>
-          <nav aria-label="Main">{link("/", House, "Home", true)}{link("/search", Search, "Search")}</nav>
+          <nav aria-label="Main">{link("/", House, "Home", true)}{link("/search", Search, "Search")}{link("/jam", Users, "Jam")}</nav>
         </div>
         <div className="side-card library-card">
           <div className="library-head">

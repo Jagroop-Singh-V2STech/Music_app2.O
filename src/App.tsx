@@ -18,6 +18,8 @@ import { PlaylistDetails } from "./pages/PlaylistDetails";
 import { Artist } from "./pages/Artist";
 import { FeaturedPlaylist } from "./pages/FeaturedPlaylist";
 import { Downloads } from "./pages/Downloads";
+import { JoinJam } from "./pages/JoinJam";
+import { JamRoom } from "./pages/JamRoom";
 import { usePlayer } from "./context/PlayerContext";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 
@@ -75,6 +77,8 @@ export default function App() {
             <Route path="/playlist/:id" element={<PlaylistDetails />} />
             <Route path="/featured/:id" element={<FeaturedPlaylist />} />
             <Route path="/downloads" element={<Downloads />} />
+            <Route path="/jam" element={<JoinJam />} />
+            <Route path="/jam/:roomId" element={<JamRoom />} />
             <Route path="/now-playing" element={<div className="now-playing-page"><ExpandedPlayer inline onQueue={openQueue} /></div>} />
           </Routes>
         </div>

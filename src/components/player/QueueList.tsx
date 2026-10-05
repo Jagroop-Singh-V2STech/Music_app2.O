@@ -7,6 +7,8 @@ import type { Song } from "../../types/music";
 import { Artwork } from "../music/Artwork";
 import { Equalizer } from "../music/Equalizer";
 import { EmptyState } from "../common/EmptyState";
+import { useJam } from "../../context/JamContext";
+import { JamQueue } from "../jam/JamQueue";
 
 function QueueItem({ id, song, current = false }: { id: string; song: Song; current?: boolean }) {
   const p = usePlayer();
@@ -23,6 +25,9 @@ function QueueItem({ id, song, current = false }: { id: string; song: Song; curr
 
 export function QueueList() {
   const p = usePlayer();
+  const jam = useJam();
+  // In a Jam the queue is the room's shared queue.
+  if (jam.room) return <JamQueue note />;
   const ids = p.queue.map((x, i) => `${x.id}-${i}`);
   const onEnd = ({ active, over }: DragEndEvent) => { if (!over || active.id === over.id) return; p.setQueue(arrayMove(p.queue, ids.indexOf(String(active.id)), ids.indexOf(String(over.id)))); };
   return (

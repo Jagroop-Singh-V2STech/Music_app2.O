@@ -1,0 +1,17 @@
+{
+  "name": "mymusic-jam-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Authoritative real-time server for MyMusic Jam rooms",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}
