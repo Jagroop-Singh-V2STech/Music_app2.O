@@ -1,5 +1,5 @@
-import { ArrowDownCircle, Heart, ListEnd, ListPlus, ListStart, MoreHorizontal, Pause, Play, Trash2, UserRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowDownCircle, Heart, ListEnd, ListPlus, ListStart, MoreHorizontal, Share2, Pause, Play, Trash2, UserRound } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Song } from "../../types/music";
 import { Artwork } from "./Artwork";
@@ -13,6 +13,8 @@ import { useToast } from "../common/Toast";
 import { primaryArtist } from "../../utils/library";
 import { formatTime } from "../../utils/formatTime";
 
+const ShareModal = lazy(() => import("./ShareModal"));
+
 interface SongRowProps { song: Song; index?: number; draggable?: boolean; list?: Song[] }
 
 export function SongRow({ song, index, draggable = false, list }: SongRowProps) {
@@ -23,6 +25,7 @@ export function SongRow({ song, index, draggable = false, list }: SongRowProps) 
   const [menu, setMenu] = useState(false);
   const [menuUp, setMenuUp] = useState(false);
   const [modal, setModal] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const active = currentSong?.id === song.id;
@@ -62,10 +65,12 @@ export function SongRow({ song, index, draggable = false, list }: SongRowProps) 
           {downloadState === "downloaded"
             ? <button role="menuitem" onClick={act(() => { void offline.remove([song.id]); toast("Removed from Downloads"); })}><Trash2 /> Remove download</button>
             : <button role="menuitem" disabled={downloadState === "downloading"} onClick={act(() => offline.download([song]))}><ArrowDownCircle /> {downloadState === "downloading" ? "Downloading…" : "Download"}</button>}
+          <button role="menuitem" disabled={!song.pageUrl} onClick={act(() => setSharing(true))}><Share2 /> Share</button>
           <Link role="menuitem" to={`/artist/${encodeURIComponent(primaryArtist(song.artist))}`} onClick={() => setMenu(false)}><UserRound /> Go to artist</Link>
         </div>}
       </div>
       {modal && <AddToPlaylistModal song={song} onClose={() => setModal(false)} />}
+      {sharing && <Suspense fallback={null}><ShareModal kind="song" songs={[song]} onClose={() => setSharing(false)} /></Suspense>}
     </div>
   );
 }

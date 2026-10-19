@@ -50,7 +50,9 @@ const writeSession = (session?: Session) => { try { if (session) localStorage.se
 export const jamSession = {
   get: readSession,
   savedName: () => { try { return localStorage.getItem(NAME_KEY) ?? readSession()?.user.name ?? ""; } catch { return ""; } },
-  clear: () => writeSession(undefined)
+  clear: () => writeSession(undefined),
+  /** Saved display name; the next Start/Join creates a session with it if it differs from the current one. */
+  setName: (name: string) => { try { localStorage.setItem(NAME_KEY, name.trim().slice(0, 32)); } catch { /* storage unavailable */ } }
 };
 
 async function call<T>(path: string, init: { method?: string; body?: unknown; token?: string } = {}): Promise<T> {
@@ -86,7 +88,7 @@ async function call<T>(path: string, init: { method?: string; body?: unknown; to
  * The server derives the user id from the token, so a client can't act as someone else.
  */
 export async function ensureJamSession(name?: string): Promise<Session> {
-  const wanted = name?.trim();
+  const wanted = (name ?? jamSession.savedName())?.trim();
   const existing = readSession();
   if (existing && (!wanted || wanted === existing.user.name)) return existing;
   const displayName = wanted || existing?.user.name;

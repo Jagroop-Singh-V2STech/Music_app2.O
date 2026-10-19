@@ -19,7 +19,7 @@ export function Header({ onMenu, solid }: { onMenu(): void; solid: boolean }) {
       <div className="header-spacer" />
       <JamPill />
       {!online && <Link to="/downloads" className="offline-pill" title="You're offline — open your downloads"><WifiOff aria-hidden="true" />Offline</Link>}
-      <div className="profile" aria-label="Profile">M</div>
+      <Link to="/settings" className="profile" aria-label="Settings" title="Settings">M</Link>
     </header>
   );
 }

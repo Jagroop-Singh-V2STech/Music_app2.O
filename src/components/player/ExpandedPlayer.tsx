@@ -9,6 +9,7 @@ import { VolumeControl } from "./VolumeControl";
 import { LikeButton } from "./LikeButton";
 import { LyricsView } from "./LyricsView";
 import { JamButton } from "../jam/JamButton";
+import { SleepTimerButton } from "./SleepTimerButton";
 import { hueFrom, primaryArtist } from "../../utils/library";
 
 interface ExpandedPlayerProps { open?: boolean; inline?: boolean; onClose?(): void; onQueue(): void }
@@ -27,6 +28,7 @@ export function ExpandedPlayer({ open = true, inline = false, onClose, onQueue }
         <span className="eyebrow">Now playing</span>
         <div className="xp-head-actions">
           <JamButton />
+          <SleepTimerButton up={false} />
           <button className={`icon-button ${showLyrics ? "active" : ""}`} aria-label={showLyrics ? "Hide lyrics" : "Show lyrics"} aria-pressed={showLyrics} disabled={!currentSong} onClick={() => setShowLyrics(v => !v)}><MicVocal /></button>
           <button className="icon-button" aria-label="Open queue" onClick={onQueue}><ListMusic /></button>
         </div>

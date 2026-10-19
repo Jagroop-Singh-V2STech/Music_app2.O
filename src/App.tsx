@@ -20,16 +20,21 @@ import { FeaturedPlaylist } from "./pages/FeaturedPlaylist";
 import { Downloads } from "./pages/Downloads";
 import { JoinJam } from "./pages/JoinJam";
 import { JamRoom } from "./pages/JamRoom";
+import { Settings } from "./pages/Settings";
+import { SharePage } from "./pages/SharePage";
+import { ShortcutsModal } from "./components/common/ShortcutsModal";
 import { usePlayer } from "./context/PlayerContext";
 import { useMediaQuery } from "./hooks/useMediaQuery";
 
-function Shortcuts() { const p = usePlayer(); const navigate = useNavigate(); useEffect(() => { const onKey = (e: KeyboardEvent) => { if (["INPUT", "TEXTAREA"].includes((document.activeElement as HTMLElement)?.tagName)) return; if (e.key === " ") { e.preventDefault(); p.toggle(); } if (e.key === "ArrowRight") p.seek(p.progress + 5); if (e.key === "ArrowLeft") p.seek(Math.max(0, p.progress - 5)); if (e.key.toLowerCase() === "n") p.next(); if (e.key.toLowerCase() === "m") p.setMuted(!p.muted); if (e.key === "/") { e.preventDefault(); navigate("/search"); } }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [navigate, p]); return null; }
+function Shortcuts({ onHelp }: { onHelp(): void }) { const p = usePlayer(); const navigate = useNavigate(); useEffect(() => { const onKey = (e: KeyboardEvent) => { if (["INPUT", "TEXTAREA"].includes((document.activeElement as HTMLElement)?.tagName)) return; if (e.key === "?") { e.preventDefault(); onHelp(); return; } if (e.key === " ") { e.preventDefault(); p.toggle(); } if (e.key === "ArrowRight") p.seek(p.progress + 5); if (e.key === "ArrowLeft") p.seek(Math.max(0, p.progress - 5)); if (e.key.toLowerCase() === "n") p.next(); if (e.key.toLowerCase() === "m") p.setMuted(!p.muted); if (e.key === "/") { e.preventDefault(); navigate("/search"); } }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [navigate, onHelp, p]); return null; }
 
 const COLLAPSE_KEY = "music_sidebar_collapsed";
 const readCollapsed = () => { try { return localStorage.getItem(COLLAPSE_KEY) === "1"; } catch { return false; } };
 
 export default function App() {
   const [create, setCreate] = useState(false);
+  const [help, setHelp] = useState(false);
+  const openHelp = useCallback(() => setHelp(true), []);
   const [queue, setQueue] = useState(false);
   const [lyrics, setLyrics] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -57,7 +62,7 @@ export default function App() {
   return (
     <div className={`app ${collapsed ? "sidebar-collapsed" : ""}`}>
       <a className="skip-link" href="#main">Skip to content</a>
-      <Shortcuts />
+      <Shortcuts onHelp={openHelp} />
       <Sidebar onCreate={openCreate} collapsed={railOnly} onToggle={toggleCollapsed} mobileOpen={drawer} onClose={() => setDrawer(false)} />
       <main id="main" ref={scroller} className="main" onScroll={e => setScrolled(e.currentTarget.scrollTop > 24)}>
         <Header onMenu={() => setDrawer(true)} solid={scrolled} />
@@ -79,6 +84,8 @@ export default function App() {
             <Route path="/downloads" element={<Downloads />} />
             <Route path="/jam" element={<JoinJam />} />
             <Route path="/jam/:roomId" element={<JamRoom />} />
+            <Route path="/settings" element={<Settings onShortcuts={openHelp} />} />
+            <Route path="/share" element={<SharePage />} />
             <Route path="/now-playing" element={<div className="now-playing-page"><ExpandedPlayer inline onQueue={openQueue} /></div>} />
           </Routes>
         </div>
@@ -89,6 +96,7 @@ export default function App() {
       <MobileNavigation />
       <ExpandedPlayer open={expanded} onClose={closeExpanded} onQueue={openQueue} />
       {create && <CreatePlaylistModal onClose={() => setCreate(false)} />}
+      {help && <ShortcutsModal onClose={() => setHelp(false)} />}
     </div>
   );
 }

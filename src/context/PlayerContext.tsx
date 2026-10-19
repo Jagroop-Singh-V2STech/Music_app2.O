@@ -4,6 +4,7 @@ import { getSongDetails } from "../services/api";
 import { getAudio, isDownloaded } from "../services/offline";
 import { musicStorage } from "../utils/storage";
 import { useMusic } from "./MusicContext";
+import { useSettings } from "./SettingsContext";
 
 export type LoadResult = "playing" | "ready" | "blocked" | "failed" | "superseded";
 
@@ -20,6 +21,8 @@ export interface PlayerController {
 export interface PlayerEngine {
   load(song: Song, options: { position: number; autoplay: boolean }): Promise<LoadResult>;
   resume(): Promise<LoadResult>; pause(): void; seek(value: number): void;
+  /** Multiplies the user's volume (0–1) without changing it, e.g. for a sleep-timer fade. */
+  setFade(scale: number): void;
   position(): number; isPlaying(): boolean; isBusy(): boolean; rate(): number; setRate(rate: number): void;
 }
 
@@ -31,12 +34,15 @@ interface PlayerState {
   removeQueue(id: string): void; clearQueue(): void; setShuffle(value: boolean): void; setRepeat(value: boolean): void;
   /** True while a controller (a Jam) owns playback. */
   controlled: boolean; setController(controller: PlayerController | null): void; engine: PlayerEngine;
+  /** Runs when a song ends; return true to stop there instead of moving on (sleep timer "end of song"). */
+  setEndedHandler(handler: (() => boolean) | null): void;
 }
 
 const PlayerContext = createContext<PlayerState | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const { addRecent } = useMusic();
+  const { settings } = useSettings();
   const audio = useRef(new Audio());
   const requestId = useRef(0);
   const objectUrl = useRef<string | undefined>(undefined);
@@ -107,9 +113,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   // Latest handlers for the audio listeners, so they are attached once and never pause playback on re-render.
   const nextRef = useRef(next);
   const repeatRef = useRef(repeat);
-  useEffect(() => { nextRef.current = next; repeatRef.current = repeat; }, [next, repeat]);
+  const autoplayRef = useRef(settings.autoplay);
+  const endedHandler = useRef<(() => boolean) | null>(null);
+  useEffect(() => { nextRef.current = next; repeatRef.current = repeat; autoplayRef.current = settings.autoplay; }, [next, repeat, settings.autoplay]);
 
-  useEffect(() => { audio.current.volume = volume; audio.current.muted = muted; }, [muted, volume]);
+  const volumeRef = useRef(volume);
+  const fade = useRef(1);
+  useEffect(() => { volumeRef.current = volume; audio.current.volume = volume * fade.current; audio.current.muted = muted; }, [muted, volume]);
 
   useEffect(() => {
     const player = audio.current;
@@ -117,7 +127,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const syncDuration = () => setDuration(Number.isFinite(player.duration) ? player.duration : 0);
     const syncPlaying = () => setPlaying(!player.paused);
     const handleError = () => { setPlaying(false); setLoading(false); setError("This audio source is unavailable. Try another song."); };
-    const handleEnded = () => { if (controllerRef.current) controllerRef.current.ended(); else if (repeatRef.current) { player.currentTime = 0; void player.play(); } else nextRef.current(); };
+    const handleEnded = () => {
+      const stop = endedHandler.current?.() ?? false;
+      if (controllerRef.current) controllerRef.current.ended(); // a Jam advances for everyone regardless
+      else if (stop) setPlaying(false);
+      else if (repeatRef.current) { player.currentTime = 0; void player.play(); }
+      else if (autoplayRef.current) nextRef.current();
+      else setPlaying(false);
+    };
     player.addEventListener("timeupdate", syncProgress); player.addEventListener("loadedmetadata", syncDuration);
     player.addEventListener("play", syncPlaying); player.addEventListener("pause", syncPlaying);
     player.addEventListener("error", handleError); player.addEventListener("ended", handleEnded);
@@ -182,6 +199,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     isPlaying: () => !audio.current.paused,
     isBusy: () => loadingRef.current || audio.current.seeking || audio.current.readyState < HTMLMediaElement.HAVE_FUTURE_DATA,
     rate: () => audio.current.playbackRate,
+    setFade: scale => { fade.current = Math.min(1, Math.max(0, scale)); audio.current.volume = volumeRef.current * fade.current; },
     setRate: rate => { if (audio.current.playbackRate !== rate) { audio.current.preservesPitch = true; audio.current.playbackRate = rate; } }
   }), [localSeek, resume]);
   const setController = useCallback((controller: PlayerController | null) => {
@@ -206,7 +224,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     addQueue: (song, playNext = false) => { if (controllerRef.current) return controllerRef.current.addQueue(song, playNext); setQueueState(items => playNext ? [song, ...items.filter(item => item.id !== song.id)] : [...items, song]); },
     removeQueue: id => { if (controllerRef.current) return controllerRef.current.removeQueue(id); setQueueState(items => items.filter(song => song.id !== id)); },
     clearQueue: () => { if (controllerRef.current) return controllerRef.current.clearQueue(); setQueueState([]); },
-    setShuffle, setRepeat, controlled, setController, engine
+    setShuffle, setRepeat, controlled, setController, engine, setEndedHandler: handler => { endedHandler.current = handler; }
   };
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }

@@ -240,3 +240,13 @@
   .expanded-player.inline { min-height: 0; }
 }
 @media (min-width: 768px) { .mobile-nav { display: none; } }
+
+/* ---------- Sleep timer ---------- */
+.sleep-timer .icon-button { position: relative; }
+.sleep-badge { position: absolute; top: -4px; right: -8px; min-width: 18px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 10px; font-weight: 800; line-height: 16px; font-variant-numeric: tabular-nums; pointer-events: none; }
+.sleep-menu { min-width: 200px; }
+.sleep-menu > .sleep-menu-title { height: 32px; color: var(--text-3); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; cursor: default; }
+.sleep-menu > .sleep-menu-title:hover { background: none; }
+.sleep-menu button svg { margin-left: auto; color: var(--accent); }
+.sleep-menu .sleep-cancel { color: var(--danger); border-top: 1px solid var(--line); border-radius: 0 0 4px 4px; }
+.sleep-menu .sleep-cancel svg { margin-left: 0; color: var(--danger); }

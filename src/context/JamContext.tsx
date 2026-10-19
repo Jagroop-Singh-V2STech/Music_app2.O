@@ -38,6 +38,8 @@ interface JamState {
   moveItem(itemId: string, afterItemId: string | null): void;
   clearQueue(): void;
   unlockAudio(): void;
+  /** Stop audio on this device only; the room keeps playing and "Tap to listen" rejoins. */
+  pauseLocally(): void;
   clearProblem(): void;
 }
 
@@ -383,9 +385,10 @@ export function JamProvider({ children }: { children: ReactNode }) {
       removeItem: itemId => send({ type: "QUEUE_ITEM_REMOVED", itemId }),
       moveItem: (itemId, afterItemId) => send({ type: "QUEUE_REORDERED", itemId, afterItemId }),
       clearQueue: () => send({ type: "QUEUE_CLEARED" }),
-      clearProblem: () => setProblem(undefined)
+      clearProblem: () => setProblem(undefined),
+      pauseLocally: () => { engine.pause(); setNeedsGesture(true); }
     };
-  }, [addSongs, end, hostAction, join, lastCause, leave, me, needsGesture, problem, room, roomId, send, start, status, unlockAudio]);
+  }, [addSongs, end, engine, hostAction, join, lastCause, leave, me, needsGesture, problem, room, roomId, send, start, status, unlockAudio]);
 
   return <JamContext.Provider value={value}>{children}</JamContext.Provider>;
 }

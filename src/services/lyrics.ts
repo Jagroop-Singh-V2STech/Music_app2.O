@@ -1,4 +1,4 @@
-import type { Song } from "../types/music";
+import type { LyricsScript, Song } from "../types/music";
 import { primaryArtist } from "../utils/library";
 import { hasIndicScript, isLatinText, romanize } from "../utils/romanize";
 
@@ -45,12 +45,13 @@ export async function fetchLyricsCandidates(song: Song): Promise<LyricsCandidate
   return found.map(c => ({ c, s: score(song, c) })).filter(x => x.s >= 40).sort((a, b) => b.s - a.s).slice(0, 5).map(x => x.c);
 }
 
-export function pickLyrics(song: Song, candidates: LyricsCandidate[], duration?: number): Lyrics | null {
+export function pickLyrics(song: Song, candidates: LyricsCandidate[], duration?: number, script: LyricsScript = "hinglish"): Lyrics | null {
+  const show = script === "original" ? (text: string) => text : romanize;
   const best = [...candidates].sort((a, b) => score(song, b, duration) - score(song, a, duration))[0];
   if (!best) return null;
   if (best.instrumental) return { kind: "instrumental" };
-  if (best.syncedLyrics) { const lines = parseLrc(best.syncedLyrics); if (lines.length) return { kind: "synced", lines: lines.map(l => ({ ...l, text: romanize(l.text) })) }; }
-  return best.plainLyrics ? { kind: "plain", lines: best.plainLyrics.split("\n").map(romanize) } : null;
+  if (best.syncedLyrics) { const lines = parseLrc(best.syncedLyrics); if (lines.length) return { kind: "synced", lines: lines.map(l => ({ ...l, text: show(l.text) })) }; }
+  return best.plainLyrics ? { kind: "plain", lines: best.plainLyrics.split("\n").map(show) } : null;
 }
 
 // "[01:02.34] text" — a line may carry several timestamps.
