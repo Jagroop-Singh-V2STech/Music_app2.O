@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { searchSongs } from "../services/api";
+import { searchExact } from "../services/api";
 import type { Song } from "../types/music";
 
 // The search API returns at most 6 songs per query and has no paging, but every word in a query must match. So
@@ -28,8 +28,9 @@ export function useArtistSongs(name: string) {
     const found = new Map<string, Song>();
     setSongs([]); setLoading(true); setError(false);
 
-    // Shares React Query's cache with useSearch, so revisiting an artist doesn't refetch.
-    const search = (query: string) => queryClient.fetchQuery({ queryKey: ["search", query], queryFn: () => searchSongs(query), staleTime: STALE_MS });
+    // Cached by React Query, so revisiting an artist doesn't refetch. Uses the literal search: the fuzzy fallback
+    // in searchSongs would multiply the requests for these deliberately narrow queries.
+    const search = (query: string) => queryClient.fetchQuery({ queryKey: ["search-exact", query], queryFn: () => searchExact(query), staleTime: STALE_MS });
     const add = (results: Song[]) => {
       const before = found.size;
       for (const song of results) if (song.artist.toLowerCase().includes(artist) && !found.has(key(song))) found.set(key(song), song);
