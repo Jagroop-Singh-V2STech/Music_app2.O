@@ -8,6 +8,7 @@ import { QueueDrawer } from "./components/player/QueueDrawer";
 import { LyricsDrawer } from "./components/player/LyricsDrawer";
 import { ExpandedPlayer } from "./components/player/ExpandedPlayer";
 import { CreatePlaylistModal } from "./components/playlist/CreatePlaylistModal";
+import { ImportSpotifyModal } from "./components/playlist/ImportSpotifyModal";
 import { Home } from "./pages/Home";
 import { Search } from "./pages/Search";
 import { Library } from "./pages/Library";
@@ -33,6 +34,7 @@ const readCollapsed = () => { try { return localStorage.getItem(COLLAPSE_KEY) ==
 
 export default function App() {
   const [create, setCreate] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [help, setHelp] = useState(false);
   const openHelp = useCallback(() => setHelp(true), []);
   const [queue, setQueue] = useState(false);
@@ -49,6 +51,7 @@ export default function App() {
 
   const toggleCollapsed = () => setCollapsed(value => { try { localStorage.setItem(COLLAPSE_KEY, value ? "0" : "1"); } catch { /* storage unavailable */ } return !value; });
   const openCreate = useCallback(() => { setDrawer(false); setCreate(true); }, []);
+  const openImport = useCallback(() => { setDrawer(false); setImporting(true); }, []);
   const closeQueue = useCallback(() => setQueue(false), []);
   const closeExpanded = useCallback(() => setExpanded(false), []);
   const openQueue = useCallback(() => { setExpanded(false); setLyrics(false); setQueue(value => !value); }, []);
@@ -70,8 +73,8 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
-            <Route path="/library" element={<Library onCreate={openCreate} />} />
-            <Route path="/playlists" element={<Library tab="playlists" onCreate={openCreate} />} />
+            <Route path="/library" element={<Library onCreate={openCreate} onImport={openImport} />} />
+            <Route path="/playlists" element={<Library tab="playlists" onCreate={openCreate} onImport={openImport} />} />
             <Route path="/albums" element={<Library tab="albums" />} />
             <Route path="/artists" element={<Library tab="artists" />} />
             <Route path="/artist/:name" element={<Artist />} />
@@ -96,6 +99,7 @@ export default function App() {
       <MobileNavigation />
       <ExpandedPlayer open={expanded} onClose={closeExpanded} onQueue={openQueue} />
       {create && <CreatePlaylistModal onClose={() => setCreate(false)} />}
+      {importing && <ImportSpotifyModal onClose={() => setImporting(false)} />}
       {help && <ShortcutsModal onClose={() => setHelp(false)} />}
     </div>
   );

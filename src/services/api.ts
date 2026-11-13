@@ -1,4 +1,5 @@
 import type { Song } from "../types/music";
+import { cleanTrackTitle, matchScore, rankMatches, tokenize, type MatchCandidate, type MatchStatus } from "../utils/match";
 const base = "https://music-be.jagroop-singh-v2stech.workers.dev";
 export async function searchExact(query: string): Promise<Song[]> {
   const response = await fetch(
@@ -118,43 +119,6 @@ async function fuzzySearch(phrase: string, words: string[]): Promise<Song[]> {
     .map((r) => r.song);
 }
 
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^a-z0-9]+/g, " ")
-    .split(" ")
-    .filter(Boolean);
-}
-
-// Average, over the query words, of the best similarity to any word of the
-// song's title, artist or page slug (which also carries the album/movie name).
-function matchScore(song: Song, words: string[]): number {
-  const hay = tokenize(`${song.title} ${song.artist} ${song.pageUrl}`);
-  const best = (w: string) =>
-    Math.max(0, ...hay.map((h) => (h.startsWith(w) ? 1 : similarity(w, h))));
-  return words.reduce((sum, w) => sum + best(w), 0) / words.length;
-}
-
-// Dice coefficient over character bigrams; tolerant of small typos.
-function similarity(a: string, b: string): number {
-  if (a.length < 2 || b.length < 2) return a === b ? 1 : 0;
-  const grams = new Map<string, number>();
-  for (let i = 0; i < a.length - 1; i++) {
-    const g = a.slice(i, i + 2);
-    grams.set(g, (grams.get(g) ?? 0) + 1);
-  }
-  let shared = 0;
-  for (let i = 0; i < b.length - 1; i++) {
-    const g = b.slice(i, i + 2);
-    const n = grams.get(g) ?? 0;
-    if (n) {
-      shared++;
-      grams.set(g, n - 1);
-    }
-  }
-  return (2 * shared) / (a.length + b.length - 2);
-}
 export async function getSongDetails(
   url: string,
 ): Promise<Pick<Song, "audioUrl">> {
@@ -190,4 +154,56 @@ function parseSearchResults(html: string): Song[] {
       },
     ];
   });
+}
+
+// ---------- Spotify playlist import (experimental) ----------
+// The worker reads Spotify's public embed widget, not an official Spotify API:
+// up to ~100 songs, no album names, and it can break if Spotify changes the page.
+
+export interface SpotifyTrack { spotify_id: string | null; title: string; artist: string; duration_ms: number | null }
+export interface SpotifyPlaylist { id: string; title: string; image: string | null; spotify_url: string; total_tracks: number; skipped_tracks: number; possibly_truncated: boolean; tracks: SpotifyTrack[] }
+
+export async function importSpotifyPlaylist(playlistUrl: string): Promise<SpotifyPlaylist> {
+  let response: Response;
+  try {
+    response = await fetch(`${base}/api/spotify/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playlist_url: playlistUrl }),
+    });
+  } catch {
+    throw new Error("Couldn't reach the music server. Check your connection and try again.");
+  }
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(body?.error?.message || "Spotify import is unavailable right now.");
+  if (!body || typeof body.title !== "string" || !Array.isArray(body.tracks)) throw new Error("The music server sent an unexpected response.");
+  return body as SpotifyPlaylist;
+}
+
+export interface TrackMatch { status: MatchStatus; candidates: MatchCandidate[] }
+
+// One plain search per Spotify song (by its cleaned title), ranked with the
+// same scoring search uses. Searches run a few at a time so a 100-song
+// playlist doesn't flood the music source.
+export async function matchSpotifyTracks(
+  tracks: SpotifyTrack[],
+  onMatch: (index: number, match: TrackMatch) => void,
+  signal?: AbortSignal,
+  concurrency = 4,
+): Promise<void> {
+  const searches = new Map<string, Promise<Song[]>>();
+  const search = (query: string) => {
+    if (!searches.has(query)) searches.set(query, searchExact(query).catch(() => []));
+    return searches.get(query)!;
+  };
+  let next = 0;
+  const work = async () => {
+    while (next < tracks.length && !signal?.aborted) {
+      const index = next++;
+      const query = tokenize(cleanTrackTitle(tracks[index].title)).join(" ");
+      const songs = query ? await search(query) : [];
+      if (!signal?.aborted) onMatch(index, rankMatches(tracks[index], songs));
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, tracks.length) }, work));
 }
