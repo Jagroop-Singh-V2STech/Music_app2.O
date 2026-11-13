@@ -1,2 +1,5 @@
 # Dependencies (installed with npm install)
 node_modules/
+
+# Browser network captures (contain session tokens)
+*.har

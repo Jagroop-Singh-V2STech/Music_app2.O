@@ -36,7 +36,7 @@ const browserHeaders = {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
@@ -109,6 +109,10 @@ export default {
         if (pathname === "/api/stream") {
           return await handleStream(request, url);
         }
+      }
+
+      if (request.method === "POST" && pathname === "/api/spotify/import") {
+        return await handleSpotifyImport(request, env);
       }
     } catch (error) {
       console.error("Unhandled error:", error && error.message);
@@ -895,5 +899,195 @@ function parseAlbumPage(html, albumUrl) {
     imageUrl: cover ? new URL(cover, albumUrl).href : null,
 
     songs,
+  };
+}
+
+// ==================================================
+// SPOTIFY PLAYLIST IMPORT (experimental, personal use)
+// ==================================================
+//
+// POST /api/spotify/import  { "playlist_url": "https://open.spotify.com/playlist/<id>" }
+//
+// Reads the playlist's public embed widget (open.spotify.com/embed/playlist/<id>),
+// the same page any website gets when it embeds a Spotify player, and parses
+// the __NEXT_DATA__ JSON inside it. This is NOT an official Spotify API: the
+// page format is undocumented and may change, it lists at most ~100 songs,
+// has no album names and no pagination, and reading it automatically is
+// against Spotify's User Guidelines. No token, cookie or login is used.
+
+const SPOTIFY_EMBED_ORIGIN = "https://open.spotify.com";
+const SPOTIFY_EMBED_TIMEOUT_MS = 15000; // override with the SPOTIFY_EMBED_TIMEOUT_MS variable
+const SPOTIFY_EMBED_MAX_BYTES = 5 * 1024 * 1024;
+// The embed widget stops listing songs here; a playlist this long may have more.
+const SPOTIFY_EMBED_TRACK_CAP = 100;
+
+class SpotifyImportError extends Error {
+  constructor(status, code, message) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function handleSpotifyImport(request, env = {}) {
+  try {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      throw new SpotifyImportError(400, "INVALID_REQUEST", 'Send JSON like { "playlist_url": "https://open.spotify.com/playlist/…" }.');
+    }
+    const playlistId = parseSpotifyPlaylistId(body && body.playlist_url);
+    if (!playlistId) {
+      throw new SpotifyImportError(400, "INVALID_URL", "That isn't a Spotify playlist link. It should look like https://open.spotify.com/playlist/…");
+    }
+    const html = await fetchSpotifyEmbed(playlistId, env);
+    return jsonResponse(parseSpotifyEmbed(html, playlistId));
+  } catch (error) {
+    if (error instanceof SpotifyImportError) {
+      return jsonResponse({ error: { code: error.code, message: error.message } }, error.status);
+    }
+    console.error("Spotify import failed:", error && error.name);
+    return jsonResponse({ error: { code: "SPOTIFY_UNAVAILABLE", message: "Spotify couldn't be reached. Try again in a minute." } }, 502);
+  }
+}
+
+// Only https://open.spotify.com/playlist/<22 base-62 chars> (optionally
+// /intl-xx/, a trailing slash, a query string) or spotify:playlist:<id>.
+// The fetched URL is rebuilt from the ID alone, so nothing the caller sends
+// can point the Worker at another host or path.
+function parseSpotifyPlaylistId(input) {
+  if (typeof input !== "string" || input.length > 500) return null;
+  const text = input.trim();
+  const uri = text.match(/^spotify:playlist:([A-Za-z0-9]{22})$/);
+  if (uri) return uri[1];
+  let url;
+  try {
+    url = new URL(text);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.hostname !== "open.spotify.com" || url.port || url.username || url.password) return null;
+  const match = url.pathname.match(/^\/(?:intl-[a-z]{2}(?:-[a-z]{2})?\/)?playlist\/([A-Za-z0-9]{22})\/?$/i);
+  return match ? match[1] : null;
+}
+
+async function fetchSpotifyEmbed(playlistId, env) {
+  const timeout = Number(env.SPOTIFY_EMBED_TIMEOUT_MS) > 0 ? Number(env.SPOTIFY_EMBED_TIMEOUT_MS) : SPOTIFY_EMBED_TIMEOUT_MS;
+  let response;
+  try {
+    response = await fetch(`${SPOTIFY_EMBED_ORIGIN}/embed/playlist/${playlistId}`, {
+      headers: { Accept: "text/html" },
+      // A redirect would mean a challenge or a moved page; never follow it.
+      redirect: "manual",
+      signal: AbortSignal.timeout(timeout),
+    });
+  } catch (error) {
+    if (error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+      throw new SpotifyImportError(504, "UPSTREAM_TIMEOUT", "Spotify took too long to answer. Try again.");
+    }
+    throw error;
+  }
+
+  if (response.status === 404) {
+    throw new SpotifyImportError(404, "PLAYLIST_UNAVAILABLE", "That playlist doesn't exist or isn't public.");
+  }
+  if (response.status === 429) {
+    throw new SpotifyImportError(429, "RATE_LIMITED", "Spotify is limiting requests right now. Try again in a few minutes.");
+  }
+  if (response.status !== 200) {
+    console.error("Spotify embed request failed:", response.status);
+    throw new SpotifyImportError(502, "SPOTIFY_UNAVAILABLE", "Spotify's playlist page couldn't be read right now. Try again later.");
+  }
+  const length = Number(response.headers.get("Content-Length"));
+  if (length > SPOTIFY_EMBED_MAX_BYTES) {
+    throw new SpotifyImportError(502, "EMBED_FORMAT_CHANGED", "Spotify's playlist page has changed, so songs can't be read from it any more.");
+  }
+  const html = await response.text();
+  if (html.length > SPOTIFY_EMBED_MAX_BYTES) {
+    throw new SpotifyImportError(502, "EMBED_FORMAT_CHANGED", "Spotify's playlist page has changed, so songs can't be read from it any more.");
+  }
+  return html;
+}
+
+const formatChanged = () =>
+  new SpotifyImportError(502, "EMBED_FORMAT_CHANGED", "Spotify's playlist page has changed, so songs can't be read from it any more.");
+
+function parseSpotifyEmbed(html, playlistId) {
+  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json"[^>]*>([\s\S]*?)<\/script>/);
+  if (!match) throw formatChanged();
+  let data;
+  try {
+    data = JSON.parse(match[1]);
+  } catch {
+    throw formatChanged();
+  }
+
+  const pageProps = data && data.props && data.props.pageProps;
+  if (!pageProps || typeof pageProps !== "object") throw formatChanged();
+  const entity = pageProps.state && pageProps.state.data && pageProps.state.data.entity;
+  if (!entity) {
+    // Missing or private playlists get Spotify's error page: pageProps.status
+    // and a "Page not available" title instead of state.
+    if (pageProps.status || pageProps.title) {
+      throw new SpotifyImportError(404, "PLAYLIST_UNAVAILABLE", "That playlist doesn't exist or isn't public.");
+    }
+    throw formatChanged();
+  }
+  if (typeof entity.name !== "string" || !Array.isArray(entity.trackList)) throw formatChanged();
+  if (entity.type && entity.type !== "playlist") throw formatChanged();
+
+  const tracks = [];
+  const seen = new Set();
+  let skipped = 0;
+  for (const item of entity.trackList) {
+    const track = normalizeEmbedTrack(item);
+    if (!track) {
+      skipped++;
+      continue;
+    }
+    const key = track.spotify_id || `${track.title}\u0000${track.artist}`.toLowerCase();
+    if (seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    tracks.push(track);
+  }
+  // Every entry unreadable means the item format changed, not an empty playlist.
+  if (entity.trackList.length && !tracks.length) throw formatChanged();
+
+  const sources = entity.coverArt && Array.isArray(entity.coverArt.sources) ? entity.coverArt.sources : [];
+  const image = sources
+    .filter((s) => s && typeof s.url === "string" && s.url.startsWith("https://"))
+    .sort((a, b) => (b.width || 0) - (a.width || 0))[0];
+
+  return {
+    id: playlistId,
+    title: entity.name,
+    image: image ? image.url : null,
+    spotify_url: `${SPOTIFY_EMBED_ORIGIN}/playlist/${playlistId}`,
+    total_tracks: entity.trackList.length,
+    skipped_tracks: skipped,
+    // The widget lists at most ~100 songs and never says how many there are.
+    possibly_truncated: entity.trackList.length >= SPOTIFY_EMBED_TRACK_CAP,
+    source: "spotify-embed",
+    tracks,
+  };
+}
+
+// Songs only: podcast episodes and entries without a title or artist are skipped.
+function normalizeEmbedTrack(item) {
+  if (!item || typeof item !== "object") return null;
+  if (item.entityType && item.entityType !== "track") return null;
+  const title = typeof item.title === "string" ? item.title.trim() : "";
+  const artist = typeof item.subtitle === "string" ? item.subtitle.replace(/\s+/g, " ").trim() : "";
+  if (!title || !artist) return null;
+  const uri = typeof item.uri === "string" ? item.uri.match(/^spotify:track:([A-Za-z0-9]{22})$/) : null;
+  return {
+    spotify_id: uri ? uri[1] : null,
+    title,
+    artist,
+    duration_ms: Number.isFinite(item.duration) && item.duration > 0 ? Math.round(item.duration) : null,
   };
 }

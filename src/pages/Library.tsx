@@ -1,4 +1,4 @@
-import { ArrowDownCircle, Heart, Plus } from "lucide-react";
+import { ArrowDownCircle, Heart, Link2, Plus } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useMusic } from "../context/MusicContext";
 import { useOffline } from "../context/OfflineContext";
@@ -13,7 +13,7 @@ import { deriveAlbums, deriveArtists, uniqueSongs } from "../utils/library";
 export type LibraryTab = "all" | "playlists" | "albums" | "artists";
 const TABS: [LibraryTab, string, string][] = [["all", "All", "/library"], ["playlists", "Playlists", "/playlists"], ["albums", "Albums", "/albums"], ["artists", "Artists", "/artists"]];
 
-export const Library = ({ tab = "all", onCreate }: { tab?: LibraryTab; onCreate?(): void }) => {
+export const Library = ({ tab = "all", onCreate, onImport }: { tab?: LibraryTab; onCreate?(): void; onImport?(): void }) => {
   const { playlists, favorites, recent } = useMusic();
   const { songs: downloads } = useOffline();
   const songs = uniqueSongs([...favorites, ...playlists.flatMap(p => p.songs), ...recent]);
@@ -32,6 +32,7 @@ export const Library = ({ tab = "all", onCreate }: { tab?: LibraryTab; onCreate?
           <MediaCard title="Downloads" subtitle={`Offline • ${downloads.length} songs`} songs={downloads} to="/downloads" overlay={<span className="liked-art downloads-tile"><ArrowDownCircle /></span>} />
           {playlists.map(p => <PlaylistCard playlist={p} key={p.id} />)}
           {onCreate && <button className="card create-card" onClick={onCreate}><span className="create-art"><Plus /></span><strong>Create playlist</strong><span className="card-sub">Name it, add a cover, fill it up</span></button>}
+          {onImport && <button className="card create-card" onClick={onImport}><span className="create-art import-art"><Link2 /></span><strong>Import from Spotify</strong><span className="card-sub">Paste a playlist link</span></button>}
         </div>
       </section>}
 

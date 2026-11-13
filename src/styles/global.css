@@ -558,3 +558,54 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 .pill.outline { box-shadow: inset 0 0 0 1px var(--line); color: var(--text-2); }
 .pill.outline:hover { color: var(--text); }
 .context-menu button:disabled { opacity: .5; cursor: default; }
+
+/* ---------- Import from Spotify ---------- */
+.modal.spotify-import { width: min(760px, 100%); }
+.import-note { font-size: 13px; }
+.import-url { display: flex; align-items: flex-end; gap: 10px; }
+.import-url label { flex: 1; margin-bottom: 0; }
+.import-url .primary { flex-shrink: 0; margin-bottom: 14px; }
+.import-url .primary svg, .import-error svg, .import-warning svg { width: 18px; height: 18px; flex-shrink: 0; }
+.import-error, .import-warning { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; margin: 4px 0 12px; }
+.import-error { color: var(--danger); }
+.import-warning { color: #f5c26b; }
+.import-head { display: flex; gap: 14px; align-items: center; margin: 12px 0; }
+.import-head img, .import-cover-blank { width: 72px; height: 72px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; box-shadow: var(--shadow-card); }
+.import-cover-blank { display: grid; place-items: center; background: var(--surface-3); font-size: 28px; }
+.import-head > div { display: grid; gap: 3px; min-width: 0; }
+.import-head strong { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-head .muted { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.inline-icon { width: 14px; height: 14px; }
+.import-empty { margin: 16px 0; }
+.import-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13px; color: var(--text-2); }
+.import-toolbar > span { margin-right: auto; font-weight: 700; color: var(--text); }
+.import-toolbar .chip:disabled { opacity: .5; }
+.import-table-wrap { max-height: 46dvh; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.import-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.import-table th { position: sticky; top: 0; z-index: 1; background: #1f1f23; text-align: left; font-size: 12px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.import-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.import-table tr:last-child td { border-bottom: 0; }
+.import-table td:first-child, .import-table th:first-child { width: 36px; padding-right: 0; }
+.import-table td:nth-child(2) { min-width: 0; }
+.import-table td strong, .import-table td .muted { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.import-table td .muted { font-size: 13px; }
+.import-table input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+.import-table select, .import-destination select, .import-destination > input { width: 100%; max-width: 280px; margin-top: 4px; background: var(--surface-3); color: var(--text); border: 1px solid transparent; border-radius: var(--radius-sm); padding: 6px 8px; font: inherit; font-size: 13px; }
+.import-table tr.is-unmatched td:nth-child(2) { opacity: .6; }
+.match-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; }
+.match-badge svg { width: 14px; height: 14px; }
+.match-badge.matched { color: var(--accent); }
+.match-badge.possible { color: #f5c26b; }
+.match-badge.unmatched { color: var(--danger); }
+.match-badge.pending { color: var(--text-3); }
+.import-destination { border: 0; padding: 0; margin: 16px 0 0; display: grid; gap: 6px; }
+.import-destination legend { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+.modal .import-destination .radio { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--text); font-size: 14px; }
+.import-destination > input, .import-destination select { max-width: 360px; padding: 9px 10px; margin: 0 0 4px 24px; width: calc(100% - 24px); }
+@media (max-width: 600px) {
+  .import-url { flex-direction: column; align-items: stretch; }
+  .import-url .primary { justify-content: center; margin-bottom: 0; }
+  .import-table .col-time { display: none; }
+  .import-table td strong, .import-table td .muted { max-width: 140px; }
+  .import-table select { max-width: 150px; }
+}
