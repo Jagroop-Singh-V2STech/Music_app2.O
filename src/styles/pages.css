@@ -195,3 +195,8 @@
 .share-actions .pill { height: 40px; }
 .share-actions .pill svg { width: 18px; }
 .context-menu > button:disabled { opacity: .45; cursor: default; }
+
+/* Downloads: upload audio files from this device */
+.upload-btn svg { width: 16px; height: 16px; }
+.upload-btn:disabled { opacity: .6; transform: none; cursor: progress; }
+.empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }

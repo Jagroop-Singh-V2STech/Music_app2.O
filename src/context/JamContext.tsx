@@ -6,6 +6,7 @@ import { JAM_CLOSE, JamSocket } from "../services/jamSocket";
 import { usePlayer, type PlayerController } from "./PlayerContext";
 import { useToast } from "../components/common/Toast";
 import { useJamPlayback } from "../hooks/useJamPlayback";
+import { getAudio, isUploaded } from "../services/offline";
 import { expectedPosition } from "../utils/jamSync";
 
 const ACTIVE_KEY = "music_jam_active";
@@ -55,6 +56,9 @@ export function shareableSong(song: Song): Song | undefined {
   return audioUrl && /^https?:/.test(audioUrl) ? song : undefined;
 }
 
+/** An uploaded song that hasn't been shared yet: it plays from this device only until its file reaches the Jam. */
+const needsUpload = (song: Song) => isUploaded(song) && !shareableSong(song);
+
 const requestId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 export function JamProvider({ children }: { children: ReactNode }) {
@@ -76,6 +80,7 @@ export function JamProvider({ children }: { children: ReactNode }) {
   const pending = useRef(new Map<string, { at: number; silent: boolean }>());
   const seekTimer = useRef<number | undefined>(undefined);
   const adds = useRef<{ song: Song; playNext: boolean }[]>([]);
+  const uploads = useRef(new Map<string, Promise<Song>>()); // "roomId|songId" -> the shared copy, so each file uploads once per room
   const rejoined = useRef(false);
   useEffect(() => { roomIdRef.current = roomId; meRef.current = me; }, [roomId, me]);
 
@@ -242,14 +247,49 @@ export function JamProvider({ children }: { children: ReactNode }) {
     }
   }, [send]);
 
-  const addSongs = useCallback((songs: Song[], playNext = false) => {
-    const shareable = songs.map(shareableSong).filter((song): song is Song => Boolean(song));
-    if (shareable.length < songs.length) toast(shareable.length ? "Some songs are only on your device and weren't added" : "This song is only on your device, so it can't be added to the Jam", "error");
-    if (!shareable.length) return;
+  /**
+   * A song uploaded from this device has no link anyone else can open, so its file goes up to the Jam server once
+   * per room; the shared copy keeps the same id (this device keeps playing its local file) plus the room's link.
+   */
+  const shareUpload = useCallback((song: Song): Promise<Song> => {
+    const id = roomIdRef.current;
+    if (!id) return Promise.reject(new Error("Join a Jam first"));
+    const key = `${id}|${song.id}`;
+    let shared = uploads.current.get(key);
+    if (!shared) {
+      shared = (async () => {
+        const audio = await getAudio(song.id);
+        if (!audio) throw new Error(`“${song.title}” is no longer on this device`);
+        toast(`Sharing “${song.title}” with the Jam…`, "info");
+        return { ...song, audioUrl: await jamApi.uploadFile(id, audio) };
+      })();
+      uploads.current.set(key, shared);
+      shared.catch(() => uploads.current.delete(key)); // let a failed upload be retried
+    }
+    return shared;
+  }, [toast]);
+
+  const enqueue = useCallback((songs: Song[], playNext: boolean) => {
     // Batch calls made in the same tick (e.g. "Add all to queue") into one command.
     if (!adds.current.length) queueMicrotask(flushAdds);
-    adds.current.push(...shareable.map(song => ({ song, playNext })));
-  }, [flushAdds, toast]);
+    adds.current.push(...songs.map(song => ({ song, playNext })));
+  }, [flushAdds]);
+
+  const addSongs = useCallback((songs: Song[], playNext = false) => {
+    const local = songs.filter(needsUpload);
+    const rest = songs.filter(song => !needsUpload(song));
+    const shareable = rest.map(shareableSong).filter((song): song is Song => Boolean(song));
+    if (shareable.length < rest.length) toast(shareable.length || local.length ? "Some songs are only on your device and weren't added" : "This song is only on your device, so it can't be added to the Jam", "error");
+    if (shareable.length) enqueue(shareable, playNext);
+    if (!local.length) return;
+    // Uploaded songs join the queue once their files are on the Jam server.
+    void Promise.allSettled(local.map(shareUpload)).then(results => {
+      const ready = results.flatMap(result => result.status === "fulfilled" ? [result.value] : []);
+      const failed = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+      if (failed) toast(failed.reason instanceof Error ? failed.reason.message : "Couldn't share that song with the Jam", "error");
+      if (ready.length) enqueue(ready, playNext);
+    });
+  }, [enqueue, shareUpload, toast]);
 
   const unlockAudio = useCallback(() => {
     setNeedsGesture(false);
@@ -296,6 +336,14 @@ export function JamProvider({ children }: { children: ReactNode }) {
       next: () => { const item = current(); if (item) send({ type: "NEXT", fromItemId: item.itemId }); },
       previous: () => { const item = current(); if (item) send({ type: "PREVIOUS", fromItemId: item.itemId }); },
       playSong: song => {
+        if (needsUpload(song)) {
+          setNeedsGesture(false);
+          shareUpload(song).then(
+            shared => send({ type: "SONG_CHANGED", song: shared }),
+            error => toast(error instanceof Error ? error.message : "Couldn't share that song with the Jam", "error")
+          );
+          return;
+        }
         const shareable = shareableSong(song);
         if (!shareable) { toast("This song is only on your device, so it can't be played in the Jam", "error"); return; }
         setNeedsGesture(false);
@@ -307,7 +355,7 @@ export function JamProvider({ children }: { children: ReactNode }) {
       // Every client reports the end; the server advances once (fromItemId makes the rest stale).
       ended: () => { const item = current(); if (item) send({ type: "NEXT", fromItemId: item.itemId, auto: true }, true); }
     };
-  }, [addSongs, engine, playback, send, toast, unlockAudio]);
+  }, [addSongs, engine, playback, send, shareUpload, toast, unlockAudio]);
 
   useEffect(() => {
     if (!roomId) return;

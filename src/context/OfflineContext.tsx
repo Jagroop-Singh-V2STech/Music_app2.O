@@ -1,12 +1,14 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Song } from "../types/music";
 import { useToast } from "../components/common/Toast";
-import { downloadSong, listDownloads, removeDownload, requestPersistentStorage, type OfflineTrack } from "../services/offline";
+import { downloadSong, importAudioFile, listDownloads, removeDownload, requestPersistentStorage, type OfflineTrack } from "../services/offline";
 
 export type DownloadStatus = "none" | "downloading" | "downloaded";
 interface OfflineState {
   online: boolean; tracks: OfflineTrack[]; songs: Song[]; totalSize: number; progress: Record<string, number>;
   status(id: string): DownloadStatus; download(songs: Song[]): void; remove(ids: string[]): Promise<void>;
+  /** Adds audio files from this device to the library (stored with the downloads). */
+  upload(files: File[]): Promise<void>;
 }
 
 const OfflineContext = createContext<OfflineState | null>(null);
@@ -63,6 +65,25 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
     pump();
   };
 
+  const upload = async (files: File[]) => {
+    if (!files.length) return;
+    void requestPersistentStorage();
+    let added = 0;
+    const problems: string[] = [];
+    // One at a time: each file is read into IndexedDB, and big batches shouldn't spike memory.
+    for (const file of files) {
+      try {
+        const track = await importAudioFile(file);
+        added++;
+        setTracks(items => [track, ...items]);
+      } catch (error) {
+        problems.push(error instanceof DOMException && error.name === "QuotaExceededError" ? "Not enough storage space" : error instanceof Error ? error.message : `Couldn't add “${file.name}”`);
+      }
+    }
+    if (problems.length) toast(added ? `Added ${added} ${added === 1 ? "song" : "songs"}. ${problems[0]}${problems.length > 1 ? ` (+${problems.length - 1} more)` : ""}` : problems[0], "error");
+    else toast(`Added ${added} ${added === 1 ? "song" : "songs"} from your device`);
+  };
+
   const remove = async (ids: string[]) => {
     pending.current = pending.current.filter(s => !ids.includes(s.id));
     await Promise.all(ids.map(removeDownload));
@@ -70,7 +91,7 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   };
 
   const value: OfflineState = {
-    online, tracks, progress, status, download, remove,
+    online, tracks, progress, status, download, remove, upload,
     songs: tracks.map(t => t.song), totalSize: tracks.reduce((sum, t) => sum + t.size, 0),
   };
   return <OfflineContext.Provider value={value}>{children}</OfflineContext.Provider>;

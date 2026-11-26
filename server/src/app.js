@@ -1,6 +1,7 @@
 import http from "node:http";
 import { JamError, errors } from "./errors.js";
 import { RoomStore } from "./rooms.js";
+import { FileStore } from "./files.js";
 import { SessionStore } from "./sessions.js";
 import { attachSockets } from "./socket.js";
 import { originAllowed } from "./config.js";
@@ -31,6 +32,8 @@ function readJson(req) {
 export function createJamServer(config, { now = Date.now } = {}) {
   const sessions = new SessionStore(config, now);
   const rooms = new RoomStore(config, { now });
+  const files = new FileStore(config);
+  rooms.on("ended", roomId => { files.dropRoom(roomId).catch(error => console.error("[jam] couldn't delete uploads", error)); });
   const failedJoins = new Map(); // ip -> { count, resetAt }: slows down guessing room codes
 
   const send = (res, status, body, origin) => {
@@ -57,7 +60,7 @@ export function createJamServer(config, { now = Date.now } = {}) {
 
     if (origin && !originAllowed(origin, config)) return send(res, 403, { error: { code: "FORBIDDEN_ORIGIN", message: "This origin is not allowed." } });
     if (req.method === "OPTIONS") {
-      res.writeHead(204, { "Access-Control-Allow-Origin": origin ?? "*", "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Max-Age": "600", Vary: "Origin" });
+      res.writeHead(204, { "Access-Control-Allow-Origin": origin ?? "*", "Access-Control-Allow-Methods": "GET, HEAD, POST, DELETE, OPTIONS", "Access-Control-Allow-Headers": "Authorization, Content-Type, Range", "Access-Control-Max-Age": "600", Vary: "Origin" });
       return res.end();
     }
     if (parts[0] !== "api" || parts[1] !== "jam") return send(res, 404, { error: { code: "NOT_FOUND", message: "Not found." } }, origin);
@@ -100,6 +103,19 @@ export function createJamServer(config, { now = Date.now } = {}) {
     if (action === "leave" && method === "POST" && !targetId) { rooms.leave(roomId, user().id); return ok(204); }
     if (action === "end" && method === "POST" && !targetId) { rooms.end(roomId, user().id); return ok(204); }
     if (action === "participants" && method === "DELETE" && targetId) { rooms.kick(roomId, user().id, decodeURIComponent(targetId)); return ok(204); }
+    if (action === "files" && method === "POST" && !targetId) {
+      const me = user();
+      const room = rooms.requireMember(roomId, me.id);
+      const saved = await files.save(room.id, me.id, req);
+      // The room may have ended while the file was uploading; its files are already gone.
+      if (!rooms.rooms.has(room.id)) { await files.dropRoom(room.id); throw errors.ended(); }
+      return ok(201, saved);
+    }
+    if (action === "files" && (method === "GET" || method === "HEAD") && targetId) {
+      const room = rooms.get(roomId);
+      const cors = origin && originAllowed(origin, config) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {};
+      return files.serve(req, res, files.get(room.id, targetId), cors);
+    }
     if (action === "host" && method === "POST" && !targetId) {
       const me = user();
       const body = await readJson(req);
@@ -112,6 +128,8 @@ export function createJamServer(config, { now = Date.now } = {}) {
   const server = http.createServer((req, res) => {
     route(req, res).catch(error => {
       if (res.headersSent) return res.end();
+      // A rejected upload leaves part of its body unread; don't reuse this connection for another request.
+      if (!req.complete) res.setHeader("Connection", "close");
       if (error instanceof JamError) return send(res, error.status, { error: { code: error.code, message: error.message } }, req.headers.origin);
       console.error("[jam] unexpected error", error);
       send(res, 500, { error: { code: "INTERNAL_ERROR", message: "Something went wrong on the Jam server." } }, req.headers.origin);
@@ -130,9 +148,11 @@ export function createJamServer(config, { now = Date.now } = {}) {
     server,
     rooms,
     sessions,
+    files,
     close: () => new Promise(resolve => {
       clearInterval(sweeper);
       sockets.close();
+      files.close();
       server.close(() => resolve());
       // Drop keep-alive connections too, so a stopping instance can't keep answering with state that's about to vanish.
       server.closeAllConnections?.();

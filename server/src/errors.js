@@ -21,5 +21,9 @@ export const errors = {
   itemNotFound: () => new JamError("ITEM_NOT_FOUND", "That song is no longer in the queue.", 409),
   queueFull: max => new JamError("QUEUE_FULL", `The shared queue is full (${max} songs max).`, 409),
   noSong: () => new JamError("NO_CURRENT_SONG", "Add a song to the queue first.", 409),
-  rateLimited: () => new JamError("RATE_LIMITED", "Slow down a little and try again.", 429)
+  rateLimited: () => new JamError("RATE_LIMITED", "Slow down a little and try again.", 429),
+  unsupportedType: () => new JamError("UNSUPPORTED_FILE", "Only audio files can be shared in a Jam.", 415),
+  tooLarge: max => new JamError("FILE_TOO_LARGE", `Songs shared in a Jam can be up to ${Math.round(max / 1e6)} MB.`, 413),
+  storageFull: () => new JamError("UPLOAD_STORAGE_FULL", "This Jam has no room for more uploaded songs right now.", 507),
+  fileNotFound: () => new JamError("FILE_NOT_FOUND", "That uploaded song is no longer available in this Jam.", 404)
 };
