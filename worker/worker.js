@@ -12,6 +12,9 @@ const MAX_ALBUM_PAGES = 15;
 // Edge-cache album lookups so repeated searches don't refetch every page.
 const ALBUM_CACHE_SECONDS = 3600;
 
+// Search results change as songs are added, so cache them for less time.
+const SEARCH_CACHE_SECONDS = 600;
+
 // ==================================================
 // Headers
 // ==================================================
@@ -197,9 +200,12 @@ async function handleSearch(url) {
 
     // fetch() does not throw on 403 etc., so we can
     // inspect the response status ourselves.
+    // One search fans out into several upstream queries (title/artist
+    // parts, narrowing tokens), so edge-cache them like album pages.
     const response = await fetch(searchUrl, {
       headers: browserHeaders,
       signal: AbortSignal.timeout(15000),
+      cf: { cacheTtl: SEARCH_CACHE_SECONDS, cacheEverything: true },
     });
 
     const body = await response.text();

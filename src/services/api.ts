@@ -1,5 +1,5 @@
 import type { Song } from "../types/music";
-import { cleanTrackTitle, matchScore, rankMatches, tokenize, type MatchCandidate, type MatchStatus } from "../utils/match";
+import { cleanTrackTitle, matchScore, queryParts, rankMatches, tokenize, type MatchCandidate, type MatchStatus } from "../utils/match";
 const base = "https://music-be.jagroop-singh-v2stech.workers.dev";
 export async function searchExact(query: string): Promise<Song[]> {
   const response = await fetch(
@@ -9,17 +9,29 @@ export async function searchExact(query: string): Promise<Song[]> {
   return parseSearchResults(await response.text());
 }
 
-// The upstream only matches the whole query as one literal substring and
-// returns ~6 songs, so "kesariya arijit", a typo like "kesarya", or a common
-// word like "khat" (crowded out by "Khatarnak Jasoos") miss the song you want.
-// - few results: also search each word (and shorter stems of it) and rank the
-//   merged results by how well they match every query word;
+// How the upstream (PagalNew) search behaves, measured:
+// - every query word must appear in the song's title+album text, OR every word
+//   in its artist text, never a mix. So "kesariya arijit" returns nothing,
+//   while "kesariya" and "arijit" each work;
+// - it returns at most 6 songs, newest first, with no paging, so an older
+//   song under a common title ("lover", "khat") or most of an artist's
+//   catalog stays hidden.
+// So:
+// - few results: also search the leading/trailing parts of the query (one is
+//   usually the title, the other the artist), each word, and shorter stems of
+//   it (typos), and rank the merged results by how well they match every word;
+// - a full page with no song titled exactly the query: repeat it with a
+//   narrowing token ("lover k", "lover j", …), which returns a different 6
+//   each time, to surface the hidden songs;
 // - no song titled exactly the query: look for albums with that exact name
 //   (the worker pages through all album results) and pull in their songs.
 const ENOUGH_RESULTS = 4;
-const MAX_EXTRA_QUERIES = 6;
+const PAGE_SIZE = 6;
+const MAX_EXTRA_QUERIES = 8;
 const MAX_ALBUM_WORDS = 3;
 const MAX_NAMED_ALBUMS = 3;
+// Rarer letters first, since they split a result set best (see useArtistSongs).
+const NARROWING_TOKENS = ["b", "w", "z", "k", "j", "la", "ra", "tu"];
 
 export async function searchSongs(query: string): Promise<Song[]> {
   const phrase = query.trim().replace(/\s+/g, " ");
@@ -34,18 +46,32 @@ export async function searchSongs(query: string): Promise<Song[]> {
   const wantAlbums =
     words.length > 0 && words.length <= MAX_ALBUM_WORDS && !exact.some(named);
   const wantFuzzy = words.length > 0 && exact.length < ENOUGH_RESULTS;
-  if (!wantAlbums && !wantFuzzy) return namedFirst(exact);
+  const wantMore = exact.length >= PAGE_SIZE && !exact.some(named);
+  if (!wantAlbums && !wantFuzzy && !wantMore) return namedFirst(exact);
 
-  const [albumSongs, fuzzy] = await Promise.all([
+  const [albumSongs, fuzzy, more] = await Promise.all([
     wantAlbums ? songsFromNamedAlbums(phrase, words).catch(() => []) : [],
     wantFuzzy ? fuzzySearch(phrase, words) : [],
+    wantMore ? narrowedSearch(phrase, words) : [],
   ]);
   const seen = new Set<string>();
   return namedFirst(
-    [...exact, ...albumSongs, ...fuzzy].filter(
+    [...exact, ...albumSongs, ...fuzzy, ...more].filter(
       (s) => !seen.has(s.id) && seen.add(s.id),
     ),
   );
+}
+
+async function narrowedSearch(phrase: string, words: string[]): Promise<Song[]> {
+  const batches = await Promise.allSettled(
+    NARROWING_TOKENS.map((t) => searchExact(`${phrase} ${t}`)),
+  );
+  return batches
+    .flatMap((b) => (b.status === "fulfilled" ? b.value : []))
+    .map((song) => ({ song, score: matchScore(song, words) }))
+    .filter((r) => r.score >= 0.6)
+    .sort((a, b) => b.score - a.score)
+    .map((r) => r.song);
 }
 
 interface AlbumResult {
@@ -97,7 +123,7 @@ async function songsFromNamedAlbums(
 }
 
 async function fuzzySearch(phrase: string, words: string[]): Promise<Song[]> {
-  const extra = new Set<string>();
+  const extra = new Set<string>(queryParts(words));
   const longestFirst = [...new Set(words)]
     .filter((w) => w.length >= 3)
     .sort((a, b) => b.length - a.length);
@@ -144,11 +170,17 @@ function parseSearchResults(html: string): Song[] {
     // "Title - " (no artist) would otherwise leave a stray " -" on the title.
     const parts = raw.replace(/\s+-\s*$/, "").split(" - ");
     const image = link.querySelector("img")?.getAttribute("src");
+    // "<b>Title - Artist</b><br><span>Album 2022</span>": drop the release year.
+    const album = link
+      .querySelector("span")
+      ?.textContent?.replace(/\s+(19|20)\d{2}\s*$/, "")
+      .trim();
     return [
       {
         id: href,
         title: parts.shift()?.trim() || "Untitled",
         artist: parts.join(" - ").trim() || "Unknown artist",
+        ...(album ? { album } : {}),
         pageUrl: new URL(href, "https://pagalnew.com").href,
         imageUrl: image ? new URL(image, "https://pagalnew.com").href : null,
       },

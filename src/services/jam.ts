@@ -8,6 +8,8 @@ const SESSION_KEY = "music_jam_session";
 const NAME_KEY = "music_jam_name";
 // Render's free tier sleeps when idle and can take ~30–60s to wake, so allow for that before giving up.
 const REQUEST_TIMEOUT_MS = 70_000;
+// Uploading a song can take a while on a slow connection.
+const UPLOAD_TIMEOUT_MS = 5 * 60_000;
 
 export const jamApiBase = `${base}/api/jam`;
 /** https:// → wss://, http:// → ws:// (from VITE_JAM_SERVER_URL, or this page's origin). */
@@ -39,7 +41,8 @@ const friendly: Record<string, string> = {
   ROOM_FULL: "This Jam is full.",
   UNAUTHORIZED: "Your Jam session expired. Join again to continue.",
   NOT_A_PARTICIPANT: "You're not part of this Jam anymore.",
-  REMOVED_FROM_ROOM: "The host removed you from this Jam."
+  REMOVED_FROM_ROOM: "The host removed you from this Jam.",
+  FILE_NOT_FOUND: "That uploaded song is no longer available in this Jam."
 };
 export const jamErrorMessage = (code: string, fallback?: string) => friendly[code] ?? fallback ?? "Something went wrong with the Jam.";
 
@@ -55,15 +58,19 @@ export const jamSession = {
   setName: (name: string) => { try { localStorage.setItem(NAME_KEY, name.trim().slice(0, 32)); } catch { /* storage unavailable */ } }
 };
 
-async function call<T>(path: string, init: { method?: string; body?: unknown; token?: string } = {}): Promise<T> {
+interface CallInit { method?: string; body?: unknown; token?: string; timeoutMs?: number }
+
+async function call<T>(path: string, init: CallInit = {}): Promise<T> {
   let response: Response;
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = window.setTimeout(() => controller.abort(), init.timeoutMs ?? REQUEST_TIMEOUT_MS);
+  // A Blob body (an uploaded song) is sent as-is with its own type; anything else as JSON.
+  const raw = init.body instanceof Blob ? init.body : undefined;
   try {
     response = await fetch(`${jamApiBase}${path}`, {
       method: init.method ?? "GET",
-      headers: { "Content-Type": "application/json", ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}) },
-      body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      headers: { "Content-Type": raw ? raw.type || "audio/mpeg" : "application/json", ...(init.token ? { Authorization: `Bearer ${init.token}` } : {}) },
+      body: raw ?? (init.body === undefined ? undefined : JSON.stringify(init.body)),
       cache: "no-store",
       signal: controller.signal
     });
@@ -100,7 +107,7 @@ export async function ensureJamSession(name?: string): Promise<Session> {
 }
 
 /** Calls an authenticated endpoint; if the server forgot the session (e.g. it restarted), makes a new one and retries once. */
-async function authed<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+async function authed<T>(path: string, init: Omit<CallInit, "token"> = {}): Promise<T> {
   const session = await ensureJamSession();
   try {
     return await call<T>(path, { ...init, token: session.token });
@@ -124,5 +131,13 @@ export const jamApi = {
   leaveRoom: (roomId: string) => authed<void>(`/rooms/${roomId}/leave`, { method: "POST" }),
   endRoom: (roomId: string) => authed<void>(`/rooms/${roomId}/end`, { method: "POST" }),
   removeParticipant: (roomId: string, userId: string) => authed<void>(`/rooms/${roomId}/participants/${encodeURIComponent(userId)}`, { method: "DELETE" }),
-  transferHost: (roomId: string, userId: string) => authed<JamRoomState>(`/rooms/${roomId}/host`, { method: "POST", body: { userId } })
+  transferHost: (roomId: string, userId: string) => authed<JamRoomState>(`/rooms/${roomId}/host`, { method: "POST", body: { userId } }),
+  /**
+   * Uploads a song's audio from this device so the room can stream it; resolves to its URL on the Jam server.
+   * The file lives only as long as the room, and only people given the link (the room's members) can find it.
+   */
+  uploadFile: async (roomId: string, audio: Blob) => {
+    const { fileId } = await authed<{ fileId: string }>(`/rooms/${roomId}/files`, { method: "POST", body: audio, timeoutMs: UPLOAD_TIMEOUT_MS });
+    return new URL(`${jamApiBase}/rooms/${roomId}/files/${fileId}`, window.location.origin).href;
+  }
 };

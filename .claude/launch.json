@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "5173", "--strictPort"],
+      "port": 5173
+    },
+    {
+      "name": "jam",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["JAM_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:4173", "node", "server/src/index.js"],
+      "port": 8787
+    },
+    {
+      "name": "mp3pm-check",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["research/mp3pm-check/server.mjs"],
+      "port": 8790
+    }
+  ]
+}

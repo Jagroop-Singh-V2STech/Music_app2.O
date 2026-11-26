@@ -6,7 +6,7 @@ import ts from "typescript";
 // src/utils/match.ts is dependency-free (its only import is a type); transpile and import it directly.
 const source = await readFile(new URL("../src/utils/match.ts", import.meta.url), "utf8");
 const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } });
-const { cleanTrackTitle, rankMatches, scoreTrackMatch, matchScore, tokenize } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`);
+const { cleanTrackTitle, queryParts, rankMatches, scoreTrackMatch, matchScore, tokenize } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString("base64")}`);
 
 const song = (id, title, artist) => ({ id: `/songs/${id}.html`, title, artist, pageUrl: `https://pagalnew.com/songs/${id}.html`, imageUrl: null });
 
@@ -61,4 +61,20 @@ test("search scoring is unchanged by the move out of services/api.ts", () => {
   assert.deepEqual(tokenize("Kesariya — Arijit!"), ["kesariya", "arijit"]);
   assert.equal(matchScore(song("f", "Kesariya", "Arijit Singh"), ["kesariya", "arijit"]), 1);
   assert.ok(matchScore(song("f", "Kesariya", "Arijit Singh"), ["kesarya"]) > 0.6);
+});
+
+test("queryParts splits a title+artist query into its leading and trailing parts, longest first", () => {
+  // The source never matches "kesariya arijit" as a whole, only each half.
+  assert.deepEqual(queryParts(["kesariya", "arijit"]), ["kesariya", "arijit"]);
+  assert.deepEqual(queryParts(["tum", "hi", "ho", "arijit"]).slice(0, 4), ["tum hi ho", "hi ho arijit", "tum hi", "ho arijit"]);
+  // Too short to search on their own.
+  assert.ok(!queryParts(["tum", "hi", "ho", "arijit"]).includes("ho"));
+  assert.deepEqual(queryParts(["kesariya"]), []);
+});
+
+test("matchScore also counts the album, so 'kesariya brahmastra' ranks the film's song", () => {
+  const withAlbum = { ...song("kesariya", "Kesariya", "Arijit Singh"), album: "Brahmastra" };
+  const other = { ...song("kesariya-ro", "Kesariya Ro Paag", "Someone"), album: "Folk" };
+  assert.ok(matchScore(withAlbum, ["kesariya", "brahmastra"]) > matchScore(other, ["kesariya", "brahmastra"]));
+  assert.equal(matchScore(withAlbum, ["kesariya", "arijit"]), 1);
 });

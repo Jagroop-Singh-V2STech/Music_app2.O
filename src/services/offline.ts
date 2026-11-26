@@ -81,5 +81,52 @@ export async function downloadSong(song: Song, onProgress: (fraction: number) =>
   return track;
 }
 
+// ---------- Uploads: audio files added from this device ----------
+
+export const MAX_UPLOAD_BYTES = 50e6;
+const AUDIO_EXTENSION = /\.(mp3|m4a|aac|ogg|oga|opus|wav|flac|weba|webm)$/i;
+const TYPE_BY_EXTENSION: Record<string, string> = { mp3: "audio/mpeg", m4a: "audio/mp4", aac: "audio/aac", ogg: "audio/ogg", oga: "audio/ogg", opus: "audio/ogg", wav: "audio/wav", flac: "audio/flac", weba: "audio/webm", webm: "audio/webm" };
+
+export const isUploaded = (song: Pick<Song, "id" | "source">) => song.source === "upload" || song.id.startsWith("upload:");
+
+/** "Arijit Singh - Kesariya (128 kbps).mp3" → { artist: "Arijit Singh", title: "Kesariya" }. */
+export function songInfoFromFileName(name: string): { title: string; artist: string } {
+  const base = name.replace(/\.[^.]+$/, "").replace(/_/g, " ").replace(/\s*[([][^)\]]*(kbps|official|audio|lyrics?)[^)\]]*[)\]]/gi, "").replace(/^\d{1,3}[\s.-]+/, "").replace(/\s+/g, " ").trim();
+  const dash = base.indexOf(" - ");
+  if (dash > 0) return { artist: base.slice(0, dash).trim(), title: base.slice(dash + 3).trim() || base };
+  return { title: base || "Untitled", artist: "Unknown artist" };
+}
+
+function audioDuration(blob: Blob): Promise<number | undefined> {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(blob);
+    const probe = new Audio();
+    const done = (value?: number) => { clearTimeout(timer); URL.revokeObjectURL(url); probe.removeAttribute("src"); resolve(value); };
+    const timer = setTimeout(() => done(undefined), 5000);
+    probe.preload = "metadata";
+    probe.onloadedmetadata = () => done(Number.isFinite(probe.duration) ? Math.round(probe.duration) : undefined);
+    probe.onerror = () => done(undefined);
+    probe.src = url;
+  });
+}
+
+/** Saves an audio file from this device as a song; it plays (and can be shared to a Jam) like any downloaded song. */
+export async function importAudioFile(file: File): Promise<OfflineTrack> {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const type = file.type.startsWith("audio/") ? file.type : TYPE_BY_EXTENSION[extension];
+  if (!type || (!file.type && !AUDIO_EXTENSION.test(file.name))) throw new Error(`“${file.name}” isn't an audio file`);
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error(`“${file.name}” is larger than ${MAX_UPLOAD_BYTES / 1e6} MB`);
+  const blob = file.type === type ? file : new Blob([file], { type });
+  const duration = await audioDuration(blob);
+  if (duration === undefined && !canPlay(type)) throw new Error(`“${file.name}” can't be played in this browser`);
+  const song: Song = { id: `upload:${crypto.randomUUID()}`, ...songInfoFromFileName(file.name), album: "Uploads", imageUrl: null, duration, source: "upload" };
+  const track: OfflineTrack = { id: song.id, song, size: blob.size, savedAt: new Date().toISOString() };
+  await run(["tracks", "audio"], "readwrite", tx => { tx.objectStore("tracks").put(track); tx.objectStore("audio").put(blob, song.id); });
+  downloadedIds.add(song.id);
+  return track;
+}
+
+const canPlay = (type: string) => new Audio().canPlayType(type) !== "";
+
 // Ask the browser not to evict downloads under storage pressure (best effort).
 export const requestPersistentStorage = () => navigator.storage?.persist?.().catch(() => false);

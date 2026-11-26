@@ -1,4 +1,7 @@
-const positiveInt = (value, fallback) => {
+import os from "node:os";
+import path from "node:path";
+
+const positiveInt =(value, fallback) => {
   const parsed = Number.parseInt(value ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
@@ -14,6 +17,11 @@ export function loadConfig(env = process.env) {
     // A participant who stays disconnected this long is removed (and loses host) while others are still listening.
     participantGraceMs: positiveInt(env.JAM_PARTICIPANT_GRACE_MS, 2 * 60_000),
     maxQueue: positiveInt(env.JAM_MAX_QUEUE, 200),
+    // Songs uploaded from a device into a Jam: stored on local disk only while the room exists.
+    uploadDir: env.JAM_UPLOAD_DIR || path.join(os.tmpdir(), "mymusic-jam-uploads"),
+    maxUploadBytes: positiveInt(env.JAM_MAX_UPLOAD_MB, 30) * 1e6,
+    maxRoomUploadBytes: positiveInt(env.JAM_MAX_ROOM_UPLOAD_MB, 300) * 1e6,
+    maxTotalUploadBytes: positiveInt(env.JAM_MAX_TOTAL_UPLOAD_MB, 1000) * 1e6,
     sessionTtlMs: 7 * 24 * 60 * 60_000,
     endedRoomTtlMs: 24 * 60 * 60_000,
     // Song changes start slightly in the future so every client can buffer before playback begins.

@@ -12,10 +12,24 @@ export function tokenize(text: string): string[] {
     .filter(Boolean);
 }
 
+// "tum hi ho arijit" → "tum hi ho", "hi ho arijit", "tum hi", "ho arijit", …:
+// the music source never matches a title and an artist together, so search
+// the leading and trailing parts separately (longest first; one is usually
+// the title, the other the artist). Parts under 3 letters are too broad.
+export function queryParts(words: string[]): string[] {
+  const parts: string[] = [];
+  for (let size = words.length - 1; size >= 1; size--)
+    parts.push(
+      words.slice(0, size).join(" "),
+      words.slice(words.length - size).join(" "),
+    );
+  return [...new Set(parts)].filter((p) => p.replace(/ /g, "").length >= 3);
+}
+
 // Average, over the query words, of the best similarity to any word of the
-// song's title, artist or page slug (which also carries the album/movie name).
+// song's title, artist, album or page slug (which often carries the movie name).
 export function matchScore(song: Song, words: string[]): number {
-  const hay = tokenize(`${song.title} ${song.artist} ${song.pageUrl}`);
+  const hay = tokenize(`${song.title} ${song.artist} ${song.album ?? ""} ${song.pageUrl}`);
   const best = (w: string) =>
     Math.max(0, ...hay.map((h) => (h.startsWith(w) ? 1 : similarity(w, h))));
   return words.reduce((sum, w) => sum + best(w), 0) / words.length;
